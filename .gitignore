@@ -1,0 +1,7 @@
+TokensAndResponses/*
+logs/*
+models/*
+.vscode/*
+__pycache__/*
+tobeprocessed.csv
+*.png

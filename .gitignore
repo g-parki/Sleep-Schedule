@@ -5,3 +5,4 @@ models/*
 __pycache__/*
 tobeprocessed.csv
 *.png
+pics.html

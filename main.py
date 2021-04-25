@@ -246,6 +246,7 @@ def start_stream():
 
 class MyFrame:
     """Applies timestamp to videocapture frame, holds image and timestamp metadata"""
+    
     def __init__(self, capture_obj):
 
         self.ret, self.original = capture_obj.read()

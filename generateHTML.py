@@ -15,12 +15,40 @@ def updateHTML():
     value_dict = {'0.0': 'Empty', '1.0': 'Awake', '2.0': 'Asleep' }
     with open('pics.html', 'w') as f:
         f.truncate(0)
-        f.write('<html>')
+        
         COLUMNS = 4
         rows = len(data)//COLUMNS
         remainder = len(data)%COLUMNS
         i=0 #global index
-        f.write('<table>')
+        
+        values = [item[2] for item in data]
+  
+        count_data_script = ("<script type='text/javascript' src='https://www.gstatic.com/charts/loader.js'></script>"
+                     +"<script type='text/javascript'>"
+                     +"google.charts.load('current', {'packages':['corechart']});"
+                     +"google.charts.setOnLoadCallback(drawChart);"
+                     +"function drawChart(){"
+                     +"var data = google.visualization.arrayToDataTable(["
+                     +"['Value', 'Data Count'],"
+                     +f"['Awake', {values.count('1.0')}],"
+                     +f"['Asleep', {values.count('2.0')}],"
+                     +f"['Empty', {values.count('0.0')}]"
+                     +"]);"
+                     +"var options = {title: 'Data Counts', pieSliceText: 'label', colors:['#DEC9F5', '#9F78CC', '#66BAFA'], legend: 'none'};"
+                     +"var chart = new google.visualization.PieChart(document.getElementById('graphcontainer'));"
+                     +"chart.draw(data, options);}"
+                     +"</script>")
+
+        
+        f.write('<html>')
+        f.write('<head>')
+        f.write(count_data_script)
+        f.write('</head>')
+        f.write('<body>')
+        f.write('<div id= "graphcontainer" style="height: 35%">')
+        f.write('</div>')
+        f.write('<div id= "tablecontainer">')
+        f.write('<table style="overflow-y: scroll; height: 65%; display: block">')
         for _ in range(rows):
             f.write('<tr>')
             for _ in range(COLUMNS):
@@ -45,6 +73,8 @@ def updateHTML():
                 i += 1
             f.write('</tr>')
         f.write('</table>')
+        f.write('</div>')
+        f.write('</body>')
         f.write('</html>')
     return None
 

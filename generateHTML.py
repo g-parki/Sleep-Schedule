@@ -13,6 +13,7 @@ def updateHTML():
 
 
     value_dict = {'0.0': 'Empty', '1.0': 'Awake', '2.0': 'Asleep' }
+    color_dict = {'Awake': '#DEC9F5', 'Asleep': '#9F78CC', 'Empty': '#66BAFA'}
     with open('pics.html', 'w') as f:
         f.truncate(0)
         
@@ -34,7 +35,11 @@ def updateHTML():
                      +f"['Asleep', {values.count('2.0')}],"
                      +f"['Empty', {values.count('0.0')}]"
                      +"]);"
-                     +"var options = {title: 'Data Counts', pieSliceText: 'label', colors:['#DEC9F5', '#9F78CC', '#66BAFA'], legend: 'none'};"
+                     +"var options = {title: 'Data Counts', "
+                     +"pieSliceText: 'value', "
+                     +f"colors:['{color_dict.get('Awake')}', '{color_dict.get('Asleep')}', '{color_dict.get('Empty')}'], "
+                     +"slices: {2: {offset: 0.2}}, "
+                     +"legend: ''};"
                      +"var chart = new google.visualization.PieChart(document.getElementById('graphcontainer'));"
                      +"chart.draw(data, options);}"
                      +"</script>")
@@ -55,7 +60,7 @@ def updateHTML():
                 original_file_path = data[len(data)-i-1][0]
                 resized_file_path = data[len(data)-i-1][1]
                 value = value_dict.get(data[len(data)-i-1][2])
-                f.write('<td style="border: 1px solid black">')
+                f.write(f'<td style="border: 1px solid black; background-color:{color_dict.get(value)}">')
                 f.write(f"<p>{value}</p><a href='{original_file_path}'><image src='{resized_file_path}'></image></a>")
                 f.write('</td>')
                 i += 1

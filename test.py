@@ -1,8 +1,7 @@
 import pandas as pd
-import main
-
+import mpld3
 import cv2
-
+from urllib.request import pathname2url
 import os   
 
 with open('TokensAndResponses/devicelist.json', 'r') as f:
@@ -21,6 +20,10 @@ sampledDFs = [df.loc[df['Value'] == value].sample(n= min_available)
 #Combine and scramble
 combinedDF = pd.concat(sampledDFs)
 combinedDF = combinedDF.sample(frac=1).reset_index(drop=True)
+
+f = lambda x: pathname2url('.\Training Data/' + x['ResizedPath'].split("\\")[-1])
+combinedDF['URL'] = combinedDF.apply(f, axis=1)
+print(combinedDF['URL'])
 '''
 import numpy as np
 import sleepmultithread

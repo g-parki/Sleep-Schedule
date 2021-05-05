@@ -21,9 +21,10 @@ sampledDFs = [df.loc[df['Value'] == value].sample(n= min_available)
 combinedDF = pd.concat(sampledDFs)
 combinedDF = combinedDF.sample(frac=1).reset_index(drop=True)
 
-f = lambda x: pathname2url('.\Training Data/' + x['ResizedPath'].split("\\")[-1])
+
+f = lambda x: pathname2url('.\static/' + x['ResizedPath'].split("\\")[-1])
 combinedDF['URL'] = combinedDF.apply(f, axis=1)
-print(combinedDF['URL'])
+
 '''
 import numpy as np
 import sleepmultithread
@@ -35,8 +36,8 @@ model_name = sleepmultithread.get_recent_model()
 model = load_model(model_name)
 
 
-picture = os.listdir('Training Data/Resized')[0]
-picture_path = f'Training Data//Resized//{picture}'
+picture = os.listdir('static/Resized')[0]
+picture_path = f'static//Resized//{picture}'
 
 image = cv2.imread(picture_path, cv2.IMREAD_GRAYSCALE)
 # cv2.imshow('window', image)

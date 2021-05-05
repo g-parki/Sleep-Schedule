@@ -64,8 +64,8 @@ def updateHTML():
             f.write('<tr>')
             for _ in range(COLUMNS):
                 
-                original_file_path = pathname2url('.\Training Data/Originals/' + data[len(data)-i-1][0].split("\\")[-1])
-                resized_file_path = pathname2url('.\Training Data/Resized/' + data[len(data)-i-1][1].split("\\")[-1])
+                original_file_path = pathname2url('.\static/Originals/' + data[len(data)-i-1][0].split("\\")[-1])
+                resized_file_path = pathname2url('.\static/Resized/' + data[len(data)-i-1][1].split("\\")[-1])
                 value = value_dict.get(data[len(data)-i-1][2])
                 f.write(f'<td style="border: 1px solid black; background-color:{color_dict.get(value)}">')
                 f.write(f"<p>{value}</p><a href='{original_file_path}'><image src='{resized_file_path}'></image></a>")

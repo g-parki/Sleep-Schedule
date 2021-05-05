@@ -1,8 +1,10 @@
 import csv
 import webbrowser
-
+from urllib.request import pathname2url
 
 def updateHTML():
+
+    PORT = '127.0.0.1:5000'
     with open('data.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         next(reader)
@@ -51,6 +53,9 @@ def updateHTML():
         f.write(count_data_script)
         f.write('</head>')
         f.write('<body>')
+        with open('figure.html', 'r') as h:
+            for line in h:
+                f.write(line)
         f.write('<div id= "graphcontainer" style="height: 35%">')
         f.write('</div>')
         f.write('<div id= "tablecontainer">')
@@ -58,8 +63,9 @@ def updateHTML():
         for _ in range(rows):
             f.write('<tr>')
             for _ in range(COLUMNS):
-                original_file_path = data[len(data)-i-1][0]
-                resized_file_path = data[len(data)-i-1][1]
+                
+                original_file_path = pathname2url('.\Training Data/Originals/' + data[len(data)-i-1][0].split("\\")[-1])
+                resized_file_path = pathname2url('.\Training Data/Resized/' + data[len(data)-i-1][1].split("\\")[-1])
                 value = value_dict.get(data[len(data)-i-1][2])
                 f.write(f'<td style="border: 1px solid black; background-color:{color_dict.get(value)}">')
                 f.write(f"<p>{value}</p><a href='{original_file_path}'><image src='{resized_file_path}'></image></a>")

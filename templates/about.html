@@ -1,0 +1,10 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h1>About Page</h1>
+    {%for item in data%}
+        {% if item > 2%}
+        <p>Item number {{item}} about</p>
+        {% endif%}
+    {%endfor%}
+{% endblock content %}

@@ -59,6 +59,14 @@ def models():
         page_length= model_page.get('pages')
     )
 
+@app.route("/models/<modelname>")
+def model(modelname):
+
+    return render_template(
+        'model.html',
+        model= modelname
+    )
+
 
 def paginate(list_to_pag, items_per_pag, page_requested):
     """Returns data to construct pagination buttons"""

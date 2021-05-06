@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, url_for
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import PolyAnnotation, Range1d
+from bokeh.transform import jitter
 import csv
 import pandas as pd
 from urllib.request import pathname2url
@@ -69,48 +70,92 @@ def model(modelname):
 
     #Load data from predictions, create URLs for each image
     df = pd.read_csv(model_predictions)
+    df['y'] = .5
     get_file_name = lambda row: row['ResizedPath'].split('\\')[-1]
     df['FileName'] = df.apply(get_file_name, axis=1)
     create_URL = lambda row: url_for('static', filename= 'Resized/' + row['FileName'])
     df['PhotoURL'] = df.apply(create_URL, axis=1)
-    accurateDF = df.loc[df['Incorrect'] == 0].reset_index()
-    inaccurateDF = df.loc[df['Incorrect'] == 1].reset_index()
+    babyDF = df.loc[df['Value'] == 'Baby'].reset_index()
+    baby_likeliness = lambda row: row['LikelyBaby'] - row['LikelyEmpty']
+    babyDF['BabyLikeliness'] = babyDF.apply(baby_likeliness, axis=1)
+
+    nobabyDF = df.loc[df['Value'] == 'No Baby'].reset_index()
+    nobaby_likeliness = lambda row: -1*(row['LikelyEmpty'] - row['LikelyBaby'])
+    nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(nobaby_likeliness, axis=1)
 
     #Create plot
     tools = 'pan, wheel_zoom, reset'
     TOOLTIPS = '<img src= "@PhotoURL">'
 
+    baby_src = ColumnDataSource(data= babyDF)
+    nobaby_src = ColumnDataSource(data= nobabyDF)
+    JITTER_RADIUS_X = .1
+    JITTER_RADIUS_Y = 1
+    DOT_SIZE = 10
+    DOT_ALPHA = .1
+    BACK_ALPHA = .05
+
     p = figure(
-        title= f'Model {modelname} Predictions',
         tooltips= TOOLTIPS,
         tools=tools,
         active_scroll= 'wheel_zoom',
-        y_range=Range1d(start=-.05, end=1.05, bounds=(-2,2)),
-        x_range=Range1d(start=-.05, end=1.05, bounds=(-2,2))
+        y_range=Range1d(start=-.1, end=1.05, bounds=(-2,2)),
+        x_range=Range1d(start=-(1+1.5*(JITTER_RADIUS_X)), end=1+1.5*JITTER_RADIUS_X, bounds=(-2,2))
     )
-    accurate_baby = ColumnDataSource(data= accurateDF.loc[accurateDF['Prediction'] == 'Baby'])
-    accurate_empty = ColumnDataSource(data= accurateDF.loc[accurateDF['Prediction'] == 'No Baby'])
-    inaccurate_baby = ColumnDataSource(data= inaccurateDF.loc[inaccurateDF['Prediction'] == 'No Baby'])
-    inaccurate_empty = ColumnDataSource(data= inaccurateDF.loc[inaccurateDF['Prediction'] == 'Baby'])
-    p.circle('LikelyEmpty','LikelyBaby', source= accurate_baby, size=15, color='blue', alpha=0.4)
-    p.circle('LikelyEmpty', 'LikelyBaby', source= accurate_empty, size=15, color='red', alpha=0.4)
-    p.circle('LikelyEmpty','LikelyBaby', source= inaccurate_baby, size=15, color='blue', alpha=0.4)
-    p.circle('LikelyEmpty', 'LikelyBaby', source= inaccurate_empty, size=15, color='red', alpha=0.4)
-    p.sizing_mode = 'scale_width'
+
     red_polygon = PolyAnnotation(
-        fill_color="red",
-        fill_alpha=0.08,
-        xs=[-10, 10, 10],
-        ys=[-10, 10, -10],
+        fill_color="crimson",
+        fill_alpha=BACK_ALPHA,
+        xs=[0, 0, -10, -10],
+        ys=[-10, 10, 10, -10],
     )
     blue_polygon = PolyAnnotation(
-        fill_color="blue",
-        fill_alpha=0.05,
-        xs=[-10, 10, -10],
-        ys=[-10, 10, 10],
+        fill_color="dodgerblue",
+        fill_alpha=BACK_ALPHA,
+        xs=[0, 0, 10, 10],
+        ys=[-10, 10, 10, -10],
     )
     p.add_layout(red_polygon)
     p.add_layout(blue_polygon)
+
+    p.circle(
+        jitter('NoBabyLikeliness', JITTER_RADIUS_X),
+        jitter('y', JITTER_RADIUS_Y),
+        source= nobaby_src,
+        size=DOT_SIZE,
+        color='red', alpha=DOT_ALPHA,
+        legend_label="Photos Without Baby            "
+    )
+
+    p.circle(
+        jitter('BabyLikeliness', JITTER_RADIUS_X),
+        jitter('y', JITTER_RADIUS_Y),
+        source= baby_src,
+        size=DOT_SIZE,
+        color='blue', alpha=DOT_ALPHA,
+        legend_label="Photos With Baby   "
+    )
+
+    p.sizing_mode = 'scale_width'
+
+    p.yaxis.visible = False
+    p.ygrid.visible = False
+    p.xaxis.axis_label = '<- Predicted to Not Have Baby             Predicted to Have Baby ->      '
+    p.xaxis.axis_label_text_font_size = '14pt'
+    p.xaxis.axis_label_text_font_style = 'bold'
+    p.xaxis.major_label_text_font_size = '0pt'  #turn off x-axis tick labels
+    p.yaxis.major_label_text_font_size = '0pt' #turn off y-axid tick labels
+    
+
+    p.legend.location = "bottom_center"
+    p.legend.click_policy="hide"
+    p.legend.label_text_font_size = '12pt'
+    p.legend.label_text_font_style = 'normal'
+    p.legend.orientation='horizontal'
+    p.legend.glyph_height= 20
+    p.legend.background_fill_alpha = 1.0
+    p.legend.border_line_width = 0
+
     script, div = components(p)
 
     return render_template(

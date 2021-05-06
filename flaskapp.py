@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import csv
 import pandas as pd
 from urllib.request import pathname2url
+import os
 
 app = Flask(__name__)
 
@@ -30,26 +31,38 @@ def datapage():
             )
         csv_data.reverse()
 
-    ITEMS_PER_PAGE = 12
-    requested_page = request.args.get('page', 1, type=int)
+    data_requested_page = request.args.get('page', 1, type=int)
 
-    page = paginate(csv_data, ITEMS_PER_PAGE, requested_page)
+    data_page = paginate(csv_data, 12, data_requested_page)
 
     return render_template(
         'data.html',
-        data= csv_data[page.get('first_ind'):page.get('last_ind')],
-        pagination= page.get('pagination_list'),
-        current_page= requested_page,
-        page_length= page.get('pages')
+        data= csv_data[data_page.get('first_ind'):data_page.get('last_ind')],
+        pagination= data_page.get('pagination_list'),
+        current_page= data_requested_page,
+        page_length= data_page.get('pages')
     )
 
 @app.route("/models")
 def models():
-    return render_template('models.html')
+    model_list = os.listdir(os.path.join(os.getcwd(), 'static', 'modelpredictions'))
+    model_list.reverse()
+    model_requested_page = request.args.get('page', 1, type=int)
+    model_page = paginate(model_list, 12, model_requested_page)
+    
+
+    return render_template(
+        'models.html',
+        data= model_list[model_page.get('first_ind'):model_page.get('last_ind')],
+        pagination= model_page.get('pagination_list'),
+        current_page= model_requested_page,
+        page_length= model_page.get('pages')
+    )
 
 
 def paginate(list_to_pag, items_per_pag, page_requested):
-    
+    """Returns data to construct pagination buttons"""
+
     pages = 1 + len(list_to_pag)//items_per_pag
     pagination_rad = 3
     

@@ -4,8 +4,6 @@ import pandas as pd
 from urllib.request import pathname2url
 
 app = Flask(__name__)
-data = pd.read_csv('data.csv')
-
 
 @app.route("/")
 @app.route("/home")
@@ -33,37 +31,64 @@ def datapage():
         csv_data.reverse()
 
     ITEMS_PER_PAGE = 12
-    pagination_rad = 3
-    pages = 1 + (len(csv_data)//ITEMS_PER_PAGE)
     requested_page = request.args.get('page', 1, type=int)
 
-    first_index =(requested_page - 1)*12
-    last_index = min(requested_page*12, len(csv_data))
-
-    #Adjust pagination radius for the pages on the end
-    if requested_page <= pagination_rad:
-        pagination = [i for i in range(1, pages + 1) if abs(requested_page - i) < abs(2*pagination_rad - requested_page)]
-    elif requested_page > pages - pagination_rad:
-        pagination = [i for i in range(1, pages + 1) if abs(requested_page - i) < abs(2*pagination_rad - (pages - requested_page +1))]
-    #Get results within pagination radius for the pages in the middle
-    else:
-        pagination = [i for i in range(1, pages + 1) if abs(requested_page - i) <= pagination_rad-1]
-    previous_page = max(1, requested_page-1)
-    next_page = min(pages, requested_page+1)
-    pagination.insert(0, previous_page)
-    pagination.append(next_page)
+    page = paginate(csv_data, ITEMS_PER_PAGE, requested_page)
 
     return render_template(
         'data.html',
-        data= csv_data[first_index:last_index],
-        pagination= pagination,
+        data= csv_data[page.get('first_ind'):page.get('last_ind')],
+        pagination= page.get('pagination_list'),
         current_page= requested_page,
-        page_length= pages
+        page_length= page.get('pages')
     )
 
 @app.route("/models")
 def models():
     return render_template('models.html')
+
+
+def paginate(list_to_pag, items_per_pag, page_requested):
+    
+    pages = 1 + len(list_to_pag)//items_per_pag
+    pagination_rad = 3
+    
+
+    first_index =(page_requested - 1)*12
+    last_index = min(page_requested*12, len(list_to_pag))
+
+    #Adjust pagination radius for the pages on the end
+    if page_requested <= pagination_rad:
+        pagination = [
+            i for i in range(1, pages + 1)
+            if abs(page_requested - i) < abs(2*pagination_rad - page_requested)
+        ]
+    elif page_requested > pages - pagination_rad:
+        pagination = [
+            i for i in range(1, pages + 1)
+            if abs(page_requested - i) < abs(2*pagination_rad - (pages - page_requested +1))
+        ]
+    #Get results within pagination radius for the pages in the middle
+    else:
+        pagination = [
+            i for i in range(1, pages + 1)
+            if abs(page_requested - i) <= pagination_rad-1
+        ]
+    
+    #Get values for "previous" and "next" page buttons
+    previous_page = max(1, page_requested-1)
+    next_page = min(pages, page_requested+1)
+    
+    #Compose one list of all button values
+    pagination.insert(0, previous_page)
+    pagination.append(next_page)
+
+    return {
+        'pagination_list': pagination,
+        'first_ind': first_index,
+        'last_ind': last_index,
+        'page_length': pages
+    }
 
 if __name__ == '__main__':
     app.run(debug= True, host='192.168.1.17')

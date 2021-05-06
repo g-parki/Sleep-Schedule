@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, url_for
+from bokeh.plotting import figure, show, ColumnDataSource
+from bokeh.embed import components
+from bokeh.models import PolyAnnotation, Range1d
 import csv
 import pandas as pd
 from urllib.request import pathname2url
@@ -50,7 +53,6 @@ def models():
     model_requested_page = request.args.get('page', 1, type=int)
     model_page = paginate(model_list, 12, model_requested_page)
     
-
     return render_template(
         'models.html',
         data= model_list[model_page.get('first_ind'):model_page.get('last_ind')],
@@ -61,10 +63,61 @@ def models():
 
 @app.route("/models/<modelname>")
 def model(modelname):
+    model_folder_path = os.path.join(os.getcwd(), 'static', 'modelpredictions', modelname)
+    model_predictions = os.path.join(model_folder_path, 'predictions.csv')
+    model_strings = os.path.join(model_folder_path, 'strings.csv') #Not used currently
+
+    #Load data from predictions, create URLs for each image
+    df = pd.read_csv(model_predictions)
+    get_file_name = lambda row: row['ResizedPath'].split('\\')[-1]
+    df['FileName'] = df.apply(get_file_name, axis=1)
+    create_URL = lambda row: url_for('static', filename= 'Resized/' + row['FileName'])
+    df['PhotoURL'] = df.apply(create_URL, axis=1)
+    accurateDF = df.loc[df['Incorrect'] == 0].reset_index()
+    inaccurateDF = df.loc[df['Incorrect'] == 1].reset_index()
+
+    #Create plot
+    tools = 'pan, wheel_zoom, reset'
+    TOOLTIPS = '<img src= "@PhotoURL">'
+
+    p = figure(
+        title= f'Model {modelname} Predictions',
+        tooltips= TOOLTIPS,
+        tools=tools,
+        active_scroll= 'wheel_zoom',
+        y_range=Range1d(start=-.05, end=1.05, bounds=(-2,2)),
+        x_range=Range1d(start=-.05, end=1.05, bounds=(-2,2))
+    )
+    accurate_baby = ColumnDataSource(data= accurateDF.loc[accurateDF['Prediction'] == 'Baby'])
+    accurate_empty = ColumnDataSource(data= accurateDF.loc[accurateDF['Prediction'] == 'No Baby'])
+    inaccurate_baby = ColumnDataSource(data= inaccurateDF.loc[inaccurateDF['Prediction'] == 'No Baby'])
+    inaccurate_empty = ColumnDataSource(data= inaccurateDF.loc[inaccurateDF['Prediction'] == 'Baby'])
+    p.circle('LikelyEmpty','LikelyBaby', source= accurate_baby, size=15, color='blue', alpha=0.4)
+    p.circle('LikelyEmpty', 'LikelyBaby', source= accurate_empty, size=15, color='red', alpha=0.4)
+    p.circle('LikelyEmpty','LikelyBaby', source= inaccurate_baby, size=15, color='blue', alpha=0.4)
+    p.circle('LikelyEmpty', 'LikelyBaby', source= inaccurate_empty, size=15, color='red', alpha=0.4)
+    p.sizing_mode = 'scale_width'
+    red_polygon = PolyAnnotation(
+        fill_color="red",
+        fill_alpha=0.08,
+        xs=[-10, 10, 10],
+        ys=[-10, 10, -10],
+    )
+    blue_polygon = PolyAnnotation(
+        fill_color="blue",
+        fill_alpha=0.05,
+        xs=[-10, 10, -10],
+        ys=[-10, 10, 10],
+    )
+    p.add_layout(red_polygon)
+    p.add_layout(blue_polygon)
+    script, div = components(p)
 
     return render_template(
         'model.html',
-        model= modelname
+        model= modelname,
+        graph_script = script,
+        graph_div = div
     )
 
 

@@ -1,5 +1,15 @@
 {% extends 'layout.html' %}
 
+{% block headscript %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
+{% endblock headscript %}
+        
+
 {% block content %}
-    <h1>Model {{model}}</h1>
+    <h1>Model {{model | safe}}</h1>
+    <div>{{graph_div | safe}}</div>
+    {{graph_script | safe}}
 {% endblock content %}
+
+{% block scripts%}
+{% endblock scripts%}

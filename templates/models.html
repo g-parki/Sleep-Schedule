@@ -1,11 +1,17 @@
 {% extends 'layout.html' %}
 
+{% block headscript %}{% endblock headscript %}
+
 {% block content %}
     <h1>Models</h1>
     <div class="card-columns">
         {%for item in data%}
+            <a href="/models/{{item}}">
             <div class="card text-right">
-                <img class="card-img-top " src="{{url_for('static', filename= 'modelpredictions/' + item + '/' + item + 'graph.png')}}" alt="Card image cap">
+                <img class="card-img-top "
+                    src="{{url_for('static', filename= 'modelpredictions/' + item + '/' + item + 'graph.png')}}"
+                    alt="Card image cap"
+                >
                 <div class="card-body card-img-overlay d-flex flex-column justify-content-end">
                     <div class= "bg-dark text-white">
                         <p class="card-text justify-content-end">{{item}}</p>
@@ -13,6 +19,7 @@
                         
                 </div>
             </div>
+            </a>
         {%endfor%}
     </div>
     <nav aria-label="">
@@ -43,3 +50,5 @@
         </ul>
       </nav>
 {% endblock content %}
+
+{% block scripts%}{% endblock scripts%}

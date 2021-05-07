@@ -13,6 +13,7 @@ import generateHTML
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 import sys
+import shareglobals
 
 # Restrict TensorFlow to only use the first GPU
 try:
@@ -167,9 +168,9 @@ def refresh_stream_token():
     original_data['results']['expiresAt'] = json_response['results']['expiresAt']
     
     new_expiry_time_string = json_response['results']['expiresAt']
-    global current_stream_expiration_time
-    current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
-    print(f'Refreshed token expires at {current_stream_expiration_time}')
+    
+    shareglobals.current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
+    print(f'Refreshed token expires at {shareglobals.current_stream_expiration_time}')
 
     #Save to streaminfo.json file
     with open('TokensAndResponses/streaminfo.json', 'w') as f:
@@ -190,7 +191,7 @@ def pacific_datetime(rfc_string):
 
 def start_stream():
     """Returns RTSP URL. Checks if previous stream URL is valid. If not, refreshes access tokens and stream tokens."""
-    global current_stream_expiration_time
+    
 
     #Get previous stream's URL and expiration date
     with open('TokensAndResponses/streaminfo.json', 'r') as f:
@@ -203,7 +204,7 @@ def start_stream():
             #Previous URL still valid for at least another minute
             if previous_expiration_localized > datetime.now() + timedelta(minutes=1):
                 print(f'Previous token still valid, expires at {previous_expiration_localized}')
-                current_stream_expiration_time = previous_expiration_localized
+                shareglobals.current_stream_expiration_time = previous_expiration_localized
                 return previous_URL
         except:
             #File may have JSON from earlier bad request
@@ -240,9 +241,9 @@ def start_stream():
     print(json_response)
     url = json_response['results']['streamUrls']['rtspUrl']
     new_expiry_time_string = json_response['results']['expiresAt']
-    current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
+    shareglobals.current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
     
-    print(f'Expires at {current_stream_expiration_time}')
+    print(f'Expires at {shareglobals.current_stream_expiration_time}')
     
     return url
 
@@ -331,7 +332,7 @@ def stream_reader(framequeue, endstream_event, response_event, streamgone_event,
 
 if __name__ == '__main__':
 
-    global current_stream_expiration_time
+    
     stream_url = start_stream()
     frame_q = Queue()
     predicted_q = Queue()
@@ -365,7 +366,7 @@ if __name__ == '__main__':
             break
 
         #Start refreshed stream if current one only has 30 seconds left
-        if current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+        if shareglobals.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
             and active_count() == 2:
             t = Thread(target= refresh_stream_token,
                     args= [],

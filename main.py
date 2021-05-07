@@ -126,7 +126,10 @@ def create_tfData(frame_array, data_options):
 def refresh_stream_token():
     """Returns new stream URL by using stream extension token. Updates streaminfo file"""
 
-    PROJECT_ID = '78d89699-49f9-42a8-91c5-139225c72faa'
+    with open('TokensAndResponses/refreshtokens.json', 'r') as f:
+        data = json.load(f)
+        PROJECT_ID = data['project_id']
+        
     device_ID = get_device_ID(PROJECT_ID, 'TokensAndResponses/accesstokens.json')
 
     #Get previous URL, stream token, and extension token

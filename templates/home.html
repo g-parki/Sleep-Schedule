@@ -1,5 +1,19 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-    <h1>Home</h1>
+    <h2>Home</h2>
+    <div class="container">
+        <div class= "row">
+            <!--img src="{{ url_for('video_feed') }}" width="90%"-->
+            <img src="{{ url_for('video_feed') }}" width="90%">
+        </div>
+        <div class= "row" style='margin-top: 10px;'>
+            <div class="btn-group" role="group" aria-label="Basic example">
+                    <button type="submit" class="btn btn-secondary classification" name="classification" value=0.0>Empty</button>
+                    <button type="submit" class="btn btn-secondary classification" name= "classification" value=1.0>Awake</button>
+                    <button type="submit" class="btn btn-secondary classification" name= "classification" value=2.0> Asleep</button>
+              </div>
+        </div>
+        
+    </div>
 {% endblock content %}

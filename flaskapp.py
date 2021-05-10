@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, url_for
+from flask import Flask, render_template, request, url_for, Response, redirect
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import PolyAnnotation, Range1d
+from bokeh.models import PolyAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
 from bokeh.transform import jitter
+import main
 import csv
 import pandas as pd
 from urllib.request import pathname2url
@@ -13,8 +14,20 @@ app = Flask(__name__)
 @app.route("/")
 @app.route("/home")
 def home():
-    
     return render_template('home.html')
+
+@app.route('/video_feed')
+def video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag."""
+    return Response(image_generator(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/classify', methods = ['POST'])
+def classify():
+    if request.method == 'POST':
+        value = request.get_data().decode('UTF-8')
+        print(value)
+    return "True"
 
 @app.route("/data")
 def datapage():
@@ -44,7 +57,7 @@ def datapage():
         data= csv_data[data_page.get('first_ind'):data_page.get('last_ind')],
         pagination= data_page.get('pagination_list'),
         current_page= data_requested_page,
-        page_length= data_page.get('pages')
+        page_length= data_page.get('page_length')
     )
 
 @app.route("/models")
@@ -59,7 +72,7 @@ def models():
         data= model_list[model_page.get('first_ind'):model_page.get('last_ind')],
         pagination= model_page.get('pagination_list'),
         current_page= model_requested_page,
-        page_length= model_page.get('pages')
+        page_length= model_page.get('page_length')
     )
 
 @app.route("/models/<modelname>")
@@ -70,11 +83,17 @@ def model(modelname):
 
     #Load data from predictions, create URLs for each image
     df = pd.read_csv(model_predictions)
+    accuracy = df['Incorrect'].value_counts(normalize=True).to_dict()
+    accuracy = str(round(accuracy.get(0)*100, 2)) + "%"
+
     df['y'] = .5
+
     get_file_name = lambda row: row['ResizedPath'].split('\\')[-1]
     df['FileName'] = df.apply(get_file_name, axis=1)
+
     create_URL = lambda row: url_for('static', filename= 'Resized/' + row['FileName'])
     df['PhotoURL'] = df.apply(create_URL, axis=1)
+
     babyDF = df.loc[df['Value'] == 'Baby'].reset_index()
     baby_likeliness = lambda row: row['LikelyBaby'] - row['LikelyEmpty']
     babyDF['BabyLikeliness'] = babyDF.apply(baby_likeliness, axis=1)
@@ -84,12 +103,12 @@ def model(modelname):
     nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(nobaby_likeliness, axis=1)
 
     #Create plot
-    tools = 'pan, wheel_zoom, reset'
+    tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
     TOOLTIPS = '<img src= "@PhotoURL">'
 
     baby_src = ColumnDataSource(data= babyDF)
     nobaby_src = ColumnDataSource(data= nobabyDF)
-    JITTER_RADIUS_X = .1
+    JITTER_RADIUS_X = .11
     JITTER_RADIUS_Y = 1
     DOT_SIZE = 10
     DOT_ALPHA = .1
@@ -98,9 +117,12 @@ def model(modelname):
     p = figure(
         tooltips= TOOLTIPS,
         tools=tools,
-        active_scroll= 'wheel_zoom',
-        y_range=Range1d(start=-.1, end=1.05, bounds=(-2,2)),
-        x_range=Range1d(start=-(1+1.5*(JITTER_RADIUS_X)), end=1+1.5*JITTER_RADIUS_X, bounds=(-2,2))
+        toolbar_location="below",
+        toolbar_sticky=False,
+        active_scroll= tools[1],
+        x_axis_location="above",
+        y_range=Range1d(start=-.02, end=1.08, bounds=(-.25,1.25)),
+        x_range=Range1d(start=-(1+1.5*(JITTER_RADIUS_X)), end=1+1.5*JITTER_RADIUS_X, bounds=(-1.25,1.25))
     )
 
     red_polygon = PolyAnnotation(
@@ -124,7 +146,7 @@ def model(modelname):
         source= nobaby_src,
         size=DOT_SIZE,
         color='red', alpha=DOT_ALPHA,
-        legend_label="Photos Without Baby            "
+        legend_label="Photos without baby  "
     )
 
     p.circle(
@@ -133,28 +155,29 @@ def model(modelname):
         source= baby_src,
         size=DOT_SIZE,
         color='blue', alpha=DOT_ALPHA,
-        legend_label="Photos With Baby   "
+        legend_label="Photos with baby   "
     )
 
-    p.sizing_mode = 'scale_width'
+    p.sizing_mode = 'scale_both'
 
     p.yaxis.visible = False
     p.ygrid.visible = False
-    p.xaxis.axis_label = '<- Predicted to Not Have Baby             Predicted to Have Baby ->      '
-    p.xaxis.axis_label_text_font_size = '14pt'
-    p.xaxis.axis_label_text_font_style = 'bold'
+    p.xaxis.axis_label = '<- Predicted to Not Have Baby    Predicted to Have Baby ->      '
+    p.xaxis.axis_label_text_font_size = '8pt'
+    p.xaxis.axis_label_text_font_style = 'normal'
+
     p.xaxis.major_label_text_font_size = '0pt'  #turn off x-axis tick labels
     p.yaxis.major_label_text_font_size = '0pt' #turn off y-axid tick labels
     
 
-    p.legend.location = "bottom_center"
+    p.legend.location = "top_center"
     p.legend.click_policy="hide"
-    p.legend.label_text_font_size = '12pt'
+    p.legend.label_text_font_size = '8pt'
     p.legend.label_text_font_style = 'normal'
-    p.legend.orientation='horizontal'
+    p.legend.orientation='vertical'
     p.legend.glyph_height= 20
-    p.legend.background_fill_alpha = 1.0
-    p.legend.border_line_width = 0
+    p.legend.background_fill_alpha = 0.7
+    p.legend.border_line_width = 1
 
     script, div = components(p)
 
@@ -162,7 +185,8 @@ def model(modelname):
         'model.html',
         model= modelname,
         graph_script = script,
-        graph_div = div
+        graph_div = div,
+        accuracy= accuracy
     )
 
 
@@ -208,6 +232,70 @@ def paginate(list_to_pag, items_per_pag, page_requested):
         'last_ind': last_index,
         'page_length': pages
     }
+
+def image_generator():
+    
+    import time
+    from threading import Thread, Event, active_count, enumerate, currentThread
+    from queue import Queue
+    import shareglobals
+    from datetime import datetime, timedelta
+    from cv2 import waitKey
+    
+    stream_url = main.start_stream()
+    frame_q = Queue()
+    predicted_q = Queue()
+    main_end_event = Event()
+    response_event = Event()
+    stream_gone_event = Event()
+    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
+    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
+    latch = False
+    prev_empt_pred = None
+    prev_baby_pred = None
+    model = main.load_model(main.get_recent_model())
+
+    initial_reader_thread = Thread(
+        target= main.stream_reader,
+        args= [frame_q, main_end_event, response_event, stream_gone_event, stream_url],
+        daemon= True
+    )
+    initial_reader_thread.start()
+
+    window_name = 'Monitor'
+    
+    while True:
+        #Exit loop if stream reader threads can't read frame
+        if stream_gone_event.isSet():
+            break
+
+        #Start refreshed stream if current one only has 30 seconds left
+        if shareglobals.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+            and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
+            t = Thread(
+                name= 'Refresh Thread',
+                target= main.refresh_stream_token,
+                args= [],
+                daemon= True
+            )
+            t.start()
+            print(f'{t.name} started')
+            print(f'Active threads: {[thread.name for thread in enumerate()]}')
+        
+        #Check if reader thread has placed frame in queue
+        if not frame_q.empty():
+            frame = frame_q.get()
+            frame = main.predictor(frame, model)
+            yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
+            # yield (b'--frame\r\n'
+            # b'Content-Type: image/jpeg\r\n\r\n' + frame.frame_grey_en + b'\r\n')
+            
+            #Listen for keypress
+            key = waitKey(40) & 0xFF
+            
+    
+    main_end_event.set()
 
 if __name__ == '__main__':
     app.run(debug= True, host='192.168.1.17')

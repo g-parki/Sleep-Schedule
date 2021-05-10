@@ -1,15 +1,18 @@
 {% extends 'layout.html' %}
 
-{% block styles %}
+{% block headscript %}
     <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/datapage.css') }}">
-{% endblock styles %}
+{% endblock headscript %}
 
 {% block content %}
-    <h1>Data</h1>
+    <h2>Data</h2>
     <div class="card-columns">
         {%for item in data%}
             <div class="card text-right">
-                <img class="card-img-top " src="{{url_for('static', filename= 'Resized/' + item.file_name)}}" alt="Card image cap">
+                <img class="card-img-top "
+                    src="{{url_for('static', filename= 'Resized/' + item.file_name)}}"
+                    alt="Card image cap"
+                >
                 <div class="card-body card-img-overlay d-flex flex-column justify-content-end">
                     <div class= "bg-dark text-white">
                         <p class="card-text justify-content-end">{{item.val}}</p>
@@ -49,5 +52,4 @@
 {% endblock content %}
 
 {% block scripts%}
-
 {% endblock scripts%}

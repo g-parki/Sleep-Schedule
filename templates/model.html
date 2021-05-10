@@ -6,8 +6,24 @@
         
 
 {% block content %}
-    <h1>Model {{model | safe}}</h1>
-    <div>{{graph_div | safe}}</div>
+    <h2>Model {{model | safe}}</h2>
+        <div class='w-100 border-bottom'>
+            <p>Accuracy: {{accuracy}}</p>
+        </div>
+
+    <div class='h-25'>
+        <div class='row'>
+            <div class='col'>
+                <p></p>
+            </div>
+        </div>
+        <div class='row'>
+            <div class='col'>
+                {{graph_div | safe}}
+            </div>
+        </div>
+    </div>
+    
     {{graph_script | safe}}
 {% endblock content %}
 

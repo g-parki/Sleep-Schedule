@@ -61,6 +61,8 @@ def predictor(frame, model):
                                         fontScale = .6,
                                         color = (255, 255, 255),
                                         thickness = 1)
+    
+    frame.prediction_image_en = cv2.imencode('.jpg', frame.prediction_image)[1].tobytes()
     return frame
 
 
@@ -238,7 +240,6 @@ def start_stream():
         json.dump(json_response, f)
 
     #Get stream URL from the response
-    print(json_response)
     url = json_response['results']['streamUrls']['rtspUrl']
     new_expiry_time_string = json_response['results']['expiresAt']
     shareglobals.current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
@@ -279,6 +280,8 @@ class MyFrame:
         #Prep image for prediction
         frame_grey = cv2.cvtColor(self.mediumsize, cv2.COLOR_BGR2GRAY)
         self.smallsize = cv2.resize(frame_grey, SMALL_SIZE)
+
+        self.frame_grey_en = cv2.imencode('.jpg', frame_grey)[1].tobytes()
 
         
 def stream_reader(framequeue, endstream_event, response_event, streamgone_event, URL= None):

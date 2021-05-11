@@ -30,7 +30,9 @@ def classify(outqueue = classification_q, inqueue = class_success_q):
     if request.method == 'POST':
         value = request.get_data().decode('UTF-8')
         outqueue.put(value)
-    return "True"
+        while inqueue.empty():
+            pass
+    return inqueue.get()
 
 @app.route("/data")
 def datapage():
@@ -261,8 +263,6 @@ def image_generator(inqueue, outqueue):
         daemon= True
     )
     initial_reader_thread.start()
-
-    window_name = 'Monitor'
     
     while True:
         #Exit loop if stream reader threads can't read frame
@@ -299,7 +299,10 @@ def image_generator(inqueue, outqueue):
                 print(f'{output_path_originals} value {value}')
                 with open('data.csv', 'a', newline='') as f:
                     csv.writer(f).writerow([output_path_originals,output_path_resized,value])
-                key = waitKey(40) & 0xFF
+                
+                outqueue.put(f'{frame.filename} saved with value {value}')
+                
+            key = waitKey(35)
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')

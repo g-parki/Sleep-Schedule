@@ -1,3 +1,7 @@
+$("#video-feed").on('load', function(){
+    $('.btn-group').removeClass('d-none');
+    $('.btn-group').addClass('d-block');
+});
 
 $(function(){
     $('button.classification').click(function(){

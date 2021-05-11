@@ -8,8 +8,11 @@ import csv
 import pandas as pd
 from urllib.request import pathname2url
 import os
+from queue import Queue
 
 app = Flask(__name__)
+classification_q = Queue()
+class_success_q = Queue()
 
 @app.route("/")
 @app.route("/home")
@@ -17,16 +20,16 @@ def home():
     return render_template('home.html')
 
 @app.route('/video_feed')
-def video_feed():
+def video_feed(inqueue = classification_q, outqueue = class_success_q):
     """Video streaming route. Put this in the src attribute of an img tag."""
-    return Response(image_generator(),
+    return Response(image_generator(inqueue, outqueue),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/classify', methods = ['POST'])
-def classify():
+def classify(outqueue = classification_q, inqueue = class_success_q):
     if request.method == 'POST':
         value = request.get_data().decode('UTF-8')
-        print(value)
+        outqueue.put(value)
     return "True"
 
 @app.route("/data")
@@ -233,26 +236,23 @@ def paginate(list_to_pag, items_per_pag, page_requested):
         'page_length': pages
     }
 
-def image_generator():
+def image_generator(inqueue, outqueue):
     
     import time
-    from threading import Thread, Event, active_count, enumerate, currentThread
+    from threading import Thread, Event, enumerate
     from queue import Queue
     import shareglobals
     from datetime import datetime, timedelta
-    from cv2 import waitKey
+    from cv2 import waitKey, cv2
     
     stream_url = main.start_stream()
     frame_q = Queue()
-    predicted_q = Queue()
     main_end_event = Event()
     response_event = Event()
     stream_gone_event = Event()
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
-    latch = False
-    prev_empt_pred = None
-    prev_baby_pred = None
+
     model = main.load_model(main.get_recent_model())
 
     initial_reader_thread = Thread(
@@ -286,15 +286,28 @@ def image_generator():
         if not frame_q.empty():
             frame = frame_q.get()
             frame = main.predictor(frame, model)
+
+            if not inqueue.empty() and frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
+            #Save Original
+                output_path_originals = f'{OUTPUT_DIRECTORY_ORIGINALS}\\{frame.filename}'
+                cv2.imwrite(output_path_originals, frame.original)
+            
+            #Save resized/greyscale copy
+                output_path_resized = f'{OUTPUT_DIRECTORY_RESIZED}\\{frame.filename}'
+                cv2.imwrite(output_path_resized, frame.smallsize)
+                value = inqueue.get()
+                print(f'{output_path_originals} value {value}')
+                with open('data.csv', 'a', newline='') as f:
+                    csv.writer(f).writerow([output_path_originals,output_path_resized,value])
+                key = waitKey(40) & 0xFF
+
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
             # yield (b'--frame\r\n'
             # b'Content-Type: image/jpeg\r\n\r\n' + frame.frame_grey_en + b'\r\n')
             
             #Listen for keypress
-            key = waitKey(40) & 0xFF
             
-    
     main_end_event.set()
 
 if __name__ == '__main__':

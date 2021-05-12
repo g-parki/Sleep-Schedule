@@ -260,19 +260,10 @@ def image_generator(inqueue, outqueue, event):
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
 
     model = main.load_model(main.get_recent_model())
+    new_URL = main.refresh_stream_token()
+    cap = cv2.VideoCapture(new_URL)
 
-    initial_reader_thread = Thread(
-        target= main.stream_reader,
-        args= [frame_q, main_end_event, response_event, stream_gone_event, stream_url],
-        daemon= False
-    )
-    initial_reader_thread.start()
-    
     while True:
-        #Exit loop if stream reader threads can't read frame
-        if stream_gone_event.isSet():
-            break
-
         #Start refreshed stream if current one only has 30 seconds left
         if shareglobals.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
             and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
@@ -286,9 +277,11 @@ def image_generator(inqueue, outqueue, event):
             print(f'{t.name} started')
             print(f'Active threads: {[thread.name for thread in enumerate()]}')
         
-        #Check if reader thread has placed frame in queue
-        if not frame_q.empty():
-            frame = frame_q.get()
+        if cap.isOpened():
+            frame = main.MyFrame(cap)
+            if not frame.ret:
+                break
+
             frame = main.predictor(frame, model)
 
             if not inqueue.empty() and frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
@@ -307,7 +300,7 @@ def image_generator(inqueue, outqueue, event):
                 outqueue.put(f'{frame.filename} saved with value {value}')
                 event.set()
                 
-            key = waitKey(30)
+            key = waitKey(40)
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
@@ -316,7 +309,7 @@ def image_generator(inqueue, outqueue, event):
             
             #Listen for keypress
             
-    main_end_event.set()
+    cap.release()
 
 if __name__ == '__main__':
     app.run(host='192.168.1.3')

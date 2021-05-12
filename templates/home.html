@@ -1,10 +1,14 @@
 {% extends 'layout.html' %}
+{% block headscript %}
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='style.css') }}">
+{% endblock headscript %}
 
 {% block content %}
     <h2>Home</h2>
     <div class="container">
         <div class= "row">
             <!--img src="{{ url_for('video_feed') }}" width="90%"-->
+            <img id= "loader" class= "loader" src="{{ url_for('static', filename= 'loader.gif') }}" width="100%">
             <img id= "video-feed" src="{{ url_for('video_feed') }}" width="90%">
         </div>
         <div class= "row" style='margin-top: 10px;'>

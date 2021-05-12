@@ -1,8 +1,11 @@
+//Show classification buttons once video has loaded
 $("#video-feed").on('load', function(){
+    $('.loader').addClass('d-none');
     $('.btn-group').removeClass('d-none');
     $('.btn-group').addClass('d-block');
 });
 
+//Send classification data point to be saved
 $(function(){
     $('button.classification').click(function(){
         value = $(this).attr('value');

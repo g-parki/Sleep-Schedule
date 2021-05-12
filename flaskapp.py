@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, Response, redirect
+from flask import Flask, render_template, request, url_for, Response, stream_with_context
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import PolyAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
@@ -8,11 +8,13 @@ import csv
 import pandas as pd
 from urllib.request import pathname2url
 import os
+from threading import Event
 from queue import Queue
 
 app = Flask(__name__)
 classification_q = Queue()
 class_success_q = Queue()
+class_success_ev = Event()
 
 @app.route("/")
 @app.route("/home")
@@ -20,19 +22,21 @@ def home():
     return render_template('home.html')
 
 @app.route('/video_feed')
-def video_feed(inqueue = classification_q, outqueue = class_success_q):
+def video_feed(inqueue = classification_q, outqueue = class_success_q, event = class_success_ev):
     """Video streaming route. Put this in the src attribute of an img tag."""
-    return Response(image_generator(inqueue, outqueue),
+    return Response(stream_with_context(image_generator(inqueue, outqueue, event)),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/classify', methods = ['POST'])
-def classify(outqueue = classification_q, inqueue = class_success_q):
+def classify(outqueue = classification_q, inqueue = class_success_q, event = class_success_ev):
+    """Receives button press from user and puts value in queue for imagegenerator"""
     if request.method == 'POST':
         value = request.get_data().decode('UTF-8')
         outqueue.put(value)
-        while inqueue.empty():
-            pass
-    return inqueue.get()
+        event.wait()
+        response = inqueue.get()
+        event.clear()
+    return response
 
 @app.route("/data")
 def datapage():
@@ -238,7 +242,7 @@ def paginate(list_to_pag, items_per_pag, page_requested):
         'page_length': pages
     }
 
-def image_generator(inqueue, outqueue):
+def image_generator(inqueue, outqueue, event):
     
     import time
     from threading import Thread, Event, enumerate
@@ -248,7 +252,7 @@ def image_generator(inqueue, outqueue):
     from cv2 import waitKey, cv2
     
     stream_url = main.start_stream()
-    frame_q = Queue()
+    frame_q = Queue(maxsize= 60)
     main_end_event = Event()
     response_event = Event()
     stream_gone_event = Event()
@@ -260,7 +264,7 @@ def image_generator(inqueue, outqueue):
     initial_reader_thread = Thread(
         target= main.stream_reader,
         args= [frame_q, main_end_event, response_event, stream_gone_event, stream_url],
-        daemon= True
+        daemon= False
     )
     initial_reader_thread.start()
     
@@ -301,8 +305,9 @@ def image_generator(inqueue, outqueue):
                     csv.writer(f).writerow([output_path_originals,output_path_resized,value])
                 
                 outqueue.put(f'{frame.filename} saved with value {value}')
+                event.set()
                 
-            key = waitKey(35)
+            key = waitKey(30)
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
@@ -314,4 +319,4 @@ def image_generator(inqueue, outqueue):
     main_end_event.set()
 
 if __name__ == '__main__':
-    app.run(debug= True, host='192.168.1.17')
+    app.run(host='192.168.1.3')

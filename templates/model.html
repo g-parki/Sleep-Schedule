@@ -9,7 +9,25 @@
     <h2>Model {{model | safe}}</h2>
         <div class='w-100 border-bottom'>
             <p>Accuracy: {{accuracy}}</p>
+            <div class= "row justify-content-between">
+                <div class= "col text-left">
+                    {% if model == previous %}
+                        <a class="btn btn-secondary disabled" href="" role="button">Previous</a>
+                    {% else %}
+                        <a class="btn btn-primary" href="/models/{{previous}}" role="button">Previous</a>
+                    {% endif %}
+                </div>
+                <div class= "col text-right">
+                    {% if model == next %}
+                        <a class="btn btn-secondary disabled" href="" role="button">Next</a>
+                    {% else %}
+                        <a class="btn btn-primary" href="/models/{{next}}" role="button">Next</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class= "row"><p></p></div>
         </div>
+    
 
     <div class='h-25'>
         <div class='row'>

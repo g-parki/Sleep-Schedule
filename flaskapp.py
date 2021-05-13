@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, url_for, Response, stream_with_context
+from re import S
+from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import PolyAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
+from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
 import main
 import csv
@@ -10,22 +12,79 @@ from urllib.request import pathname2url
 import os
 from threading import Event
 from queue import Queue
+import shareglobals
 
 app = Flask(__name__)
 classification_q = Queue()
 class_success_q = Queue()
 class_success_ev = Event()
+shareglobals.predictions_list = [0,0,0,0]
 
 @app.route("/")
 @app.route("/home")
 def home():
-    return render_template('home.html')
+    ajax_source = AjaxDataSource(
+        data_url= url_for('ajaxprediction'),
+        polling_interval=500,
+        mode='replace'
+    )
+    ajax_source.data = dict(x=[], y=[])
+
+    p = figure(
+        plot_height=60,
+        sizing_mode= 'scale_width',
+        x_range= Range1d(start=-1.05, end=1.05, bounds=(-1.05,1.05)),
+        y_range= Range1d(start=-0.1, end=0.1, bounds=(-0.25,0.25)),
+        tools= '',
+        toolbar_location= None,
+        min_border= 0,
+    )
+    p.scatter('x', 'y',
+        source=ajax_source,
+        color= 'black',
+        size= 10,
+        fill_alpha= .3
+        )
+    red_polygon = PolyAnnotation(
+        fill_color="crimson",
+        fill_alpha=0.05,
+        xs=[0, 0, -1, -1],
+        ys=[-10, 10, 10, -10],
+    )
+    blue_polygon = PolyAnnotation(
+        fill_color="dodgerblue",
+        fill_alpha=0.05,
+        xs=[0, 0, 1, 1],
+        ys=[-10, 10, 10, -10],
+    )
+    p.add_layout(red_polygon)
+    p.add_layout(blue_polygon)
+    p.yaxis.visible = False
+    p.xaxis.visible = False
+    p.ygrid.visible = False
+
+    script, div = components(p)
+
+    return render_template(
+        'home.html',
+        graph_div = div,
+        graph_script = script,
+    )
+
+@app.route('/dummyajax', methods= ['POST'])
+def dummy_ajax():
+    return jsonify(message= 'Received')
 
 @app.route('/video_feed')
 def video_feed(inqueue = classification_q, outqueue = class_success_q, event = class_success_ev):
     """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(stream_with_context(image_generator(inqueue, outqueue, event)),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/ajaxprediction', methods= ['POST'])
+def ajaxprediction():
+    """Returns live data for ajax prediction graph"""
+    return jsonify(x= shareglobals.predictions_list, y= [0,0,0,0])
 
 @app.route('/classify', methods = ['POST'])
 def classify(outqueue = classification_q, inqueue = class_success_q, event = class_success_ev):
@@ -88,6 +147,21 @@ def models():
 def model(modelname):
     model_folder_path = os.path.join(os.getcwd(), 'static', 'modelpredictions', modelname)
     model_predictions = os.path.join(model_folder_path, 'predictions.csv')
+    
+    #Determine values for previous model, next model buttons
+    all_models = os.listdir('models')
+    all_models.reverse()
+    cur_index = all_models.index(modelname)
+    if cur_index == 0:
+        next_model = all_models[1]
+        prev_model = modelname
+    elif cur_index == len(all_models) - 1:
+        next_model = modelname
+        prev_model = all_models[-2]
+    else:
+        next_model = all_models[cur_index + 1]
+        prev_model = all_models[cur_index - 1]
+
     model_strings = os.path.join(model_folder_path, 'strings.csv') #Not used currently
 
     #Load data from predictions, create URLs for each image
@@ -195,7 +269,9 @@ def model(modelname):
         model= modelname,
         graph_script = script,
         graph_div = div,
-        accuracy= accuracy
+        accuracy= accuracy,
+        next = next_model,
+        previous = prev_model
     )
 
 
@@ -245,23 +321,17 @@ def paginate(list_to_pag, items_per_pag, page_requested):
 def image_generator(inqueue, outqueue, event):
     
     import time
-    from threading import Thread, Event, enumerate
-    from queue import Queue
-    import shareglobals
+    from threading import Thread, enumerate
     from datetime import datetime, timedelta
     from cv2 import waitKey, cv2
     
-    stream_url = main.start_stream()
-    frame_q = Queue(maxsize= 60)
-    main_end_event = Event()
-    response_event = Event()
-    stream_gone_event = Event()
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
 
     model = main.load_model(main.get_recent_model())
-    new_URL = main.refresh_stream_token()
-    cap = cv2.VideoCapture(new_URL)
+
+    stream_url = main.start_stream()
+    cap = cv2.VideoCapture(stream_url)
 
     while True:
         #Start refreshed stream if current one only has 30 seconds left
@@ -283,6 +353,10 @@ def image_generator(inqueue, outqueue, event):
                 break
 
             frame = main.predictor(frame, model)
+            
+            temp = shareglobals.predictions_list[1:]
+            temp.append(frame.prediction_strength)
+            shareglobals.predictions_list = temp
 
             if not inqueue.empty() and frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
             #Save Original
@@ -300,7 +374,7 @@ def image_generator(inqueue, outqueue, event):
                 outqueue.put(f'{frame.filename} saved with value {value}')
                 event.set()
                 
-            key = waitKey(40)
+            key = waitKey(10)
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')

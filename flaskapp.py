@@ -2,7 +2,7 @@ from re import S
 from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import PolyAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
+from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
 import main
@@ -39,26 +39,38 @@ def home():
         toolbar_location= None,
         min_border= 0,
     )
+    red_polygon = BoxAnnotation(
+        right= 0,
+        fill_color="crimson",
+        fill_alpha=0.05,
+    )
+    blue_polygon = BoxAnnotation(
+        left= 0,
+        fill_color="dodgerblue",
+        fill_alpha=0.05,
+    )
+    red_polygon_end = BoxAnnotation(
+        right= -1,
+        fill_color="crimson",
+        fill_alpha=.5,
+    )
+    blue_polygon_end = BoxAnnotation(
+        left= 1,
+        fill_color="dodgerblue",
+        fill_alpha=.5,
+    )
+    p.add_layout(red_polygon_end)
+    p.add_layout(blue_polygon_end)
+    p.add_layout(red_polygon)
+    p.add_layout(blue_polygon)
+    
+
     p.scatter('x', 'y',
         source=ajax_source,
         color= 'black',
         size= 10,
         fill_alpha= .3
         )
-    red_polygon = PolyAnnotation(
-        fill_color="crimson",
-        fill_alpha=0.05,
-        xs=[0, 0, -1, -1],
-        ys=[-10, 10, 10, -10],
-    )
-    blue_polygon = PolyAnnotation(
-        fill_color="dodgerblue",
-        fill_alpha=0.05,
-        xs=[0, 0, 1, 1],
-        ys=[-10, 10, 10, -10],
-    )
-    p.add_layout(red_polygon)
-    p.add_layout(blue_polygon)
     p.yaxis.visible = False
     p.xaxis.visible = False
     p.ygrid.visible = False
@@ -208,17 +220,15 @@ def model(modelname):
         x_range=Range1d(start=-(1+1.5*(JITTER_RADIUS_X)), end=1+1.5*JITTER_RADIUS_X, bounds=(-1.25,1.25))
     )
 
-    red_polygon = PolyAnnotation(
-        fill_color="crimson",
-        fill_alpha=BACK_ALPHA,
-        xs=[0, 0, -10, -10],
-        ys=[-10, 10, 10, -10],
+    red_polygon = BoxAnnotation(
+        right= 0,
+        fill_color= "crimson",
+        fill_alpha= BACK_ALPHA,
     )
-    blue_polygon = PolyAnnotation(
+    blue_polygon = BoxAnnotation(
+        left= 0,
         fill_color="dodgerblue",
-        fill_alpha=BACK_ALPHA,
-        xs=[0, 0, 10, 10],
-        ys=[-10, 10, 10, -10],
+        fill_alpha= BACK_ALPHA,
     )
     p.add_layout(red_polygon)
     p.add_layout(blue_polygon)

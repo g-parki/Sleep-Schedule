@@ -1,5 +1,22 @@
 //Show classification buttons once video has loaded
+$(document).ready(function(){
+	$.ajaxSetup({ cache: false });
+     // or iPhones don't get fresh data
+});
+
 $("#video-feed").on('load', function(){
+    var today = new Date();
+    $.ajax({
+        url: '/dummyajax',
+        data: today,
+        type: 'POST',
+        success: function(response){
+            console.log(response);
+        },
+        error: function(error){
+            console.log(error);
+        }
+    });
     $('.loader').addClass('d-none');
     $('.btn-group').removeClass('d-none');
     $('.btn-group').addClass('d-block');

@@ -109,9 +109,13 @@ def classify(outqueue = classification_q, inqueue = class_success_q, event = cla
         event.clear()
     return response
 
+@app.route('/photo')
+def photo():
+    photo_name = request.args.get('photo', 1, type=str)
+    return render_template('photo.html', file_name = photo_name)
+
 @app.route("/data")
 def datapage():
-    
     with open('data.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         next(reader)
@@ -159,6 +163,9 @@ def models():
 def model(modelname):
     model_folder_path = os.path.join(os.getcwd(), 'static', 'modelpredictions', modelname)
     model_predictions = os.path.join(model_folder_path, 'predictions.csv')
+    model_summ_path = os.path.join(model_folder_path, 'summary.txt')
+
+    summary = get_model_summary(model_summ_path)
     
     #Determine values for previous model, next model buttons
     all_models = os.listdir('models')
@@ -199,7 +206,7 @@ def model(modelname):
 
     #Create plot
     tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
-    TOOLTIPS = '<img src= "@PhotoURL">'
+    TOOLTIPS = '<div><img src= "@PhotoURL"><p>@FileName</p></div>'
 
     baby_src = ColumnDataSource(data= babyDF)
     nobaby_src = ColumnDataSource(data= nobabyDF)
@@ -281,9 +288,21 @@ def model(modelname):
         graph_div = div,
         accuracy= accuracy,
         next = next_model,
-        previous = prev_model
+        previous = prev_model,
+        summary= summary
     )
 
+def get_model_summary(path):
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    shitty_strings = ['====', '____']
+    stringlist = [line[:-2] for line in lines]
+    stringlist = [
+        line.capitalize() for line in stringlist 
+        if shitty_strings[0] not in line 
+        and shitty_strings[1] not in line
+    ]
+    return stringlist
 
 def paginate(list_to_pag, items_per_pag, page_requested):
     """Returns data to construct pagination buttons"""
@@ -396,4 +415,4 @@ def image_generator(inqueue, outqueue, event):
     cap.release()
 
 if __name__ == '__main__':
-    app.run(host='192.168.1.3')
+    app.run(debug= True, host='192.168.1.3')

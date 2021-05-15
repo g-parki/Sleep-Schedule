@@ -27,8 +27,6 @@
             </div>
             <div class= "row"><p></p></div>
         </div>
-    
-
     <div class='h-25'>
         <div class='row'>
             <div class='col'>
@@ -40,7 +38,19 @@
                 {{graph_div | safe}}
             </div>
         </div>
+        <div class= 'row'>
+            <div class= 'col'>
+                <p>
+                <small>
+                    {% for line in summary%}
+                        {{line}}<br>
+                    {% endfor%}
+                </small>
+                </p>
+            </div>
+        </div>
     </div>
+
     
     {{graph_script | safe}}
 {% endblock content %}

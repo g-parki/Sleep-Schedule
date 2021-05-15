@@ -46,6 +46,7 @@ def predictor(frame, model):
     prediction_list = model(array, training= False).numpy().tolist()[0]
     frame.empty_prediction = prediction_list[0]
     frame.baby_prediction = prediction_list[1]
+    frame.prediction_strength = frame.baby_prediction - frame.empty_prediction
 
     if frame.empty_prediction > frame.baby_prediction:
         frame.prediction_str = f'PREDICTION: EMPTY BED ({frame.empty_prediction: .6f}, '\

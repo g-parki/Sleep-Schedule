@@ -1,0 +1,15 @@
+{% extends 'layout.html' %}
+{% block headscript %}
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='style.css') }}">
+{% endblock headscript %}
+
+{% block content %}
+    <h2>Photo {{file_name}}</h2>
+    <div class="container">
+        <div class= "row">
+            <div class= "col-11">
+                <img src="{{url_for('static', filename= 'Originals/' + file_name)}}" class= "img-fluid">
+            </div>
+        </div>
+    </div>
+{% endblock content %}

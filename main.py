@@ -261,6 +261,7 @@ class MyFrame:
         
         SMALL_SIZE = (240,135)
         MEDIUM_SIZE = (1280, 720)
+        SMALL_MED_SIZE = (960, 540)
 
         #build timestamp string
         self.timestamp_for_video = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -276,7 +277,7 @@ class MyFrame:
                                 color = (255, 255, 255),
                                 thickness = 2)
 
-        self.mediumsize = cv2.resize(self.image, MEDIUM_SIZE)
+        self.mediumsize = cv2.resize(self.image, SMALL_MED_SIZE)
 
         #Prep image for prediction
         frame_grey = cv2.cvtColor(self.mediumsize, cv2.COLOR_BGR2GRAY)

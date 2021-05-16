@@ -1,8 +1,8 @@
-from re import S
+from bokeh.core.enums import FontStyle
 from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool
+from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
 import main
@@ -59,10 +59,17 @@ def home():
         fill_color="dodgerblue",
         fill_alpha=.5,
     )
+    left_annotation = Label(x=-.93, y=-.065, text="Empty", text_align='left', text_font_size = '12px')
+    center_annotation = Label(x=0, y=-.065, text= "Live Prediction", text_align='center', text_font_size = '14px', text_font_style= 'bold')
+    right_annotation = Label(x=.93, y=-.065, text= "Baby", text_align='right', text_font_size = '12px')
+    
     p.add_layout(red_polygon_end)
     p.add_layout(blue_polygon_end)
     p.add_layout(red_polygon)
     p.add_layout(blue_polygon)
+    p.add_layout(left_annotation)
+    p.add_layout(center_annotation)
+    p.add_layout(right_annotation)
     
 
     p.scatter('x', 'y',
@@ -403,6 +410,7 @@ def image_generator(inqueue, outqueue, event):
                 outqueue.put(f'{frame.filename} saved with value {value}')
                 event.set()
                 
+    
             key = waitKey(10)
 
             yield (b'--frame\r\n'

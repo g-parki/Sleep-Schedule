@@ -1,5 +1,7 @@
 from bokeh.core.enums import FontStyle
 from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 from bokeh.plotting import figure, show, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
@@ -15,6 +17,18 @@ from queue import Queue
 import shareglobals
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+db = SQLAlchemy(app)
+
+class DataPoint(db.Model):
+    id = db.Column(db.Integer, primary_key= True)
+    timestamp = db.Column(db.DateTime, default= datetime.utcnow)
+    value = db.Column(db.String, nullable= False)
+    imagepath = db.Column(db.String, nullable= False)
+
+    def __repr__(self) -> str:
+        return f'ID: {self.id}\nTime: {self.timestamp}\nValue: {self.value}\nImagepath: {self.imagepath}'
+
 classification_q = Queue()
 class_success_q = Queue()
 class_success_ev = Event()
@@ -25,7 +39,7 @@ shareglobals.predictions_list = [0,0,0,0]
 def home():
     ajax_source = AjaxDataSource(
         data_url= url_for('ajaxprediction'),
-        polling_interval=500,
+        polling_interval=1000,
         mode='replace'
     )
     ajax_source.data = dict(x=[], y=[])
@@ -409,9 +423,8 @@ def image_generator(inqueue, outqueue, event):
                 
                 outqueue.put(f'{frame.filename} saved with value {value}')
                 event.set()
-                
-    
-            key = waitKey(10)
+                  
+            key = waitKey(20)
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
@@ -423,4 +436,4 @@ def image_generator(inqueue, outqueue, event):
     cap.release()
 
 if __name__ == '__main__':
-    app.run(debug= True, host='192.168.1.3')
+    app.run(host='192.168.1.3')

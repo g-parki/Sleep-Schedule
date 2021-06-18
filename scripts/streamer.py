@@ -1,19 +1,14 @@
 import requests
 import json
 from cv2 import cv2
-import numpy as np
 from datetime import datetime, timedelta
 import os
-import time
 import csv
 import pytz
 from threading import Thread, Event, active_count, enumerate, currentThread
 from queue import Queue
-import generateHTML
 from tensorflow.keras.models import load_model
 import tensorflow as tf
-import sys
-import shareglobals
 
 # Restrict TensorFlow to only use the first GPU
 try:
@@ -96,7 +91,7 @@ def get_device_ID(projectID, accesstokens_file):
 
     #Try getting from local file
     try:
-        with open('TokensAndResponses/devicelist.json', 'r') as f:
+        with open('./TokensAndResponses/devicelist.json', 'r') as f:
             device_ID = json.load(f)['devices'][0]['name'].split('/')[3]
     except:
         #Send request
@@ -112,7 +107,7 @@ def get_device_ID(projectID, accesstokens_file):
         json_response = json.loads(device_response.content)
 
         #Save response to file
-        with open('TokensAndResponses/devicelist.json', 'w') as f:
+        with open('./TokensAndResponses/devicelist.json', 'w') as f:
             json.dump(json_response, f)
 
         #Get device ID from the name in the response
@@ -129,15 +124,16 @@ def create_tfData(frame_array, data_options):
 
 def refresh_stream_token():
     """Returns new stream URL by using stream extension token. Updates streaminfo file"""
+    global current_stream_expiration_time
 
-    with open('TokensAndResponses/refreshtokens.json', 'r') as f:
+    with open('./TokensAndResponses/refreshtokens.json', 'r') as f:
         data = json.load(f)
         PROJECT_ID = data['project_id']
         
-    device_ID = get_device_ID(PROJECT_ID, 'TokensAndResponses/accesstokens.json')
+    device_ID = get_device_ID(PROJECT_ID, './TokensAndResponses/accesstokens.json')
 
     #Get previous URL, stream token, and extension token
-    with open('TokensAndResponses/streaminfo.json', 'r') as f:
+    with open('./TokensAndResponses/streaminfo.json', 'r') as f:
         original_data = json.load(f)
         previous_URL = original_data['results']['streamUrls']['rtspUrl']
         stream_token = original_data['results']['streamToken']
@@ -146,9 +142,9 @@ def refresh_stream_token():
         #Remove old stream token from url
         base_URL = previous_URL.split(stream_token)[0]
     
-    access_token = refresh_access_token('TokensAndResponses/client_secret.json',
-                                        'TokensAndResponses/refreshtokens.json',
-                                        'TokensAndResponses/accesstokens.json')     
+    access_token = refresh_access_token('./TokensAndResponses/client_secret.json',
+                                        './TokensAndResponses/refreshtokens.json',
+                                        './TokensAndResponses/accesstokens.json')     
 
     #Build request for stream extension token
     _headers = {'Content-Type':'application/json', 'Authorization': f'Bearer {access_token}'}
@@ -172,11 +168,11 @@ def refresh_stream_token():
     
     new_expiry_time_string = json_response['results']['expiresAt']
     
-    shareglobals.current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
-    print(f'Refreshed token expires at {shareglobals.current_stream_expiration_time}')
+    current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
+    print(f'Refreshed token expires at {current_stream_expiration_time}')
 
     #Save to streaminfo.json file
-    with open('TokensAndResponses/streaminfo.json', 'w') as f:
+    with open('./TokensAndResponses/streaminfo.json', 'w') as f:
         json.dump(original_data, f)
         
     return new_URL
@@ -194,10 +190,10 @@ def pacific_datetime(rfc_string):
 
 def start_stream():
     """Returns RTSP URL. Checks if previous stream URL is valid. If not, refreshes access tokens and stream tokens."""
-    
+    global current_stream_expiration_time
 
     #Get previous stream's URL and expiration date
-    with open('TokensAndResponses/streaminfo.json', 'r') as f:
+    with open('./TokensAndResponses/streaminfo.json', 'r') as f:
         data = json.load(f)
         try:
             previous_URL = data['results']['streamUrls']['rtspUrl']
@@ -207,22 +203,22 @@ def start_stream():
             #Previous URL still valid for at least another minute
             if previous_expiration_localized > datetime.now() + timedelta(minutes=1):
                 print(f'Previous token still valid, expires at {previous_expiration_localized}')
-                shareglobals.current_stream_expiration_time = previous_expiration_localized
+                current_stream_expiration_time = previous_expiration_localized
                 return previous_URL
         except:
             #File may have JSON from earlier bad request
             pass
     #Previous URL expired or about to expire
     #Get new access key, make request for device ID
-    new_access_token = refresh_access_token('TokensAndResponses/client_secret.json',
-                                            'TokensAndResponses/refreshtokens.json',
-                                            'TokensAndResponses/accesstokens.json')
+    new_access_token = refresh_access_token('./TokensAndResponses/client_secret.json',
+                                            './TokensAndResponses/refreshtokens.json',
+                                            './TokensAndResponses/accesstokens.json')
     
-    with open('TokensAndResponses/refreshtokens.json', 'r') as f:
+    with open('./TokensAndResponses/refreshtokens.json', 'r') as f:
         data = json.load(f)
         PROJECT_ID = data['project_id']
     
-    device_ID = get_device_ID(PROJECT_ID, 'TokensAndResponses/accesstokens.json')
+    device_ID = get_device_ID(PROJECT_ID, './TokensAndResponses/accesstokens.json')
 
     #Build request to start RTSP stream
     _headers = {'Content-Type':'application/json', 'Authorization': f'Bearer {new_access_token}'}
@@ -237,15 +233,15 @@ def start_stream():
     json_response = json.loads(response.content)
 
     #Save stream URL response to local file
-    with open('TokensAndResponses/streaminfo.json', 'w') as f:
+    with open('./TokensAndResponses/streaminfo.json', 'w') as f:
         json.dump(json_response, f)
 
     #Get stream URL from the response
     url = json_response['results']['streamUrls']['rtspUrl']
     new_expiry_time_string = json_response['results']['expiresAt']
-    shareglobals.current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
+    current_stream_expiration_time = pacific_datetime(new_expiry_time_string)
     
-    print(f'Expires at {shareglobals.current_stream_expiration_time}')
+    print(f'Expires at {current_stream_expiration_time}')
     
     return url
 
@@ -371,7 +367,7 @@ if __name__ == '__main__':
             break
 
         #Start refreshed stream if current one only has 30 seconds left
-        if shareglobals.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+        if current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
             and active_count() == 2:
             t = Thread(target= refresh_stream_token,
                     args= [],
@@ -437,7 +433,7 @@ if __name__ == '__main__':
                 else: #Key was 0, 1, or 2
                     value = format(int(chr(key)), '.1f')
                     print(f'{output_path_originals} value {value}')
-                    with open('data.csv', 'a', newline='') as f:
+                    with open('./data/data.csv', 'a', newline='') as f:
                         csv.writer(f).writerow([output_path_originals,output_path_resized,value])
                 
                 generateHTML.updateHTML()
@@ -453,6 +449,6 @@ if __name__ == '__main__':
     print('End of script')
 
     if picture_to_review:
-        import categorizemanually
+        from . import categorizemanually
     
     

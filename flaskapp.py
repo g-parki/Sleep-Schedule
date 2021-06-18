@@ -2,22 +2,22 @@ from bokeh.core.enums import FontStyle
 from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from bokeh.plotting import figure, show, ColumnDataSource
+from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
-import streamer
+from scripts import streamer, shareglobals_file
 import csv
 import pandas as pd
 from urllib.request import pathname2url
 import os
 from threading import Event
 from queue import Queue
-import shareglobals
+
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/site.db'
 db = SQLAlchemy(app)
 
 class DataPoint(db.Model):
@@ -32,7 +32,9 @@ class DataPoint(db.Model):
 classification_q = Queue()
 class_success_q = Queue()
 class_success_ev = Event()
-shareglobals.predictions_list = [0,0,0,0]
+global predictions_list
+
+predictions_list = [0,0,0,0]
 
 @app.route("/")
 @app.route("/home")
@@ -117,7 +119,8 @@ def video_feed(inqueue = classification_q, outqueue = class_success_q, event = c
 @app.route('/ajaxprediction', methods= ['POST'])
 def ajaxprediction():
     """Returns live data for ajax prediction graph"""
-    return jsonify(x= shareglobals.predictions_list, y= [0,0,0,0])
+    global preductions_list
+    return jsonify(x= predictions_list, y= [0,0,0,0])
 
 @app.route('/classify', methods = ['POST'])
 def classify(outqueue = classification_q, inqueue = class_success_q, event = class_success_ev):
@@ -137,7 +140,7 @@ def photo():
 
 @app.route("/data")
 def datapage():
-    with open('data.csv', 'r', newline='') as f:
+    with open('data/data.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         next(reader)
         csv_data = []
@@ -374,6 +377,7 @@ def image_generator(inqueue, outqueue, event):
     from threading import Thread, enumerate
     from datetime import datetime, timedelta
     from cv2 import waitKey, cv2
+    global predictions_list
     
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
@@ -385,7 +389,7 @@ def image_generator(inqueue, outqueue, event):
 
     while True:
         #Start refreshed stream if current one only has 30 seconds left
-        if shareglobals.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+        if streamer.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
             and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
             t = Thread(
                 name= 'Refresh Thread',
@@ -404,9 +408,9 @@ def image_generator(inqueue, outqueue, event):
 
             frame = streamer.predictor(frame, model)
             
-            temp = shareglobals.predictions_list[1:]
+            temp = predictions_list[1:]
             temp.append(frame.prediction_strength)
-            shareglobals.predictions_list = temp
+            predictions_list = temp
 
             if not inqueue.empty() and frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
             #Save Original
@@ -418,7 +422,7 @@ def image_generator(inqueue, outqueue, event):
                 cv2.imwrite(output_path_resized, frame.smallsize)
                 value = inqueue.get()
                 print(f'{output_path_originals} value {value}')
-                with open('data.csv', 'a', newline='') as f:
+                with open('data/data.csv', 'a', newline='') as f:
                     csv.writer(f).writerow([output_path_originals,output_path_resized,value])
                 
                 outqueue.put(f'{frame.filename} saved with value {value}')

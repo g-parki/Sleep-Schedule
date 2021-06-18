@@ -7,3 +7,4 @@ tobeprocessed.csv
 *.png
 pics.html
 proto.py
+server.py

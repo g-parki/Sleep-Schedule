@@ -20,6 +20,7 @@ $("#video-feed").on('load', function(){
     $('.loader').addClass('d-none');
     $('.btn-group').removeClass('d-none');
     $('.btn-group').addClass('d-block');
+    $('.bk').removeClass('d-none');
 });
 
 //Send classification data point to be saved

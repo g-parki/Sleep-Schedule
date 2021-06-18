@@ -7,7 +7,7 @@ from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
-import main
+import streamer
 import csv
 import pandas as pd
 from urllib.request import pathname2url
@@ -378,9 +378,9 @@ def image_generator(inqueue, outqueue, event):
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
 
-    model = main.load_model(main.get_recent_model())
+    model = streamer.load_model(streamer.get_recent_model())
 
-    stream_url = main.start_stream()
+    stream_url = streamer.start_stream()
     cap = cv2.VideoCapture(stream_url)
 
     while True:
@@ -389,7 +389,7 @@ def image_generator(inqueue, outqueue, event):
             and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
             t = Thread(
                 name= 'Refresh Thread',
-                target= main.refresh_stream_token,
+                target= streamer.refresh_stream_token,
                 args= [],
                 daemon= True
             )
@@ -398,11 +398,11 @@ def image_generator(inqueue, outqueue, event):
             print(f'Active threads: {[thread.name for thread in enumerate()]}')
         
         if cap.isOpened():
-            frame = main.MyFrame(cap)
+            frame = streamer.MyFrame(cap)
             if not frame.ret:
                 break
 
-            frame = main.predictor(frame, model)
+            frame = streamer.predictor(frame, model)
             
             temp = shareglobals.predictions_list[1:]
             temp.append(frame.prediction_strength)

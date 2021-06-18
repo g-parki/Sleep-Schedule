@@ -10,8 +10,7 @@ This project is wrapped in a Flask web app to provide:
 ### Demo
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/61096711/122155308-90942980-ce1b-11eb-96ab-14e243d3d434.gif)
 
-### What's the status?
-Web app is currently live on my local network. The most recent model appears robust enough to put into production.
+### What's the status, and what's next?
+The web app is private (for obvious privacy concerns). I'm happy with the accuracy of the recent model, so next I'll be setting up a database to record automatic readings.
 
-### What's next?
-I will have the model make periodic predictions and record the infant's sleep time in an SQLite database.
+

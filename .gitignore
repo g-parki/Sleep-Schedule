@@ -8,3 +8,4 @@ tobeprocessed.csv
 pics.html
 proto.py
 server.py
+*.pyc

@@ -399,8 +399,8 @@ def image_generator(inqueue, outqueue, event):
     from cv2 import waitKey, cv2
     global predictions_list
     
-    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Originals'
-    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep Schedule\\static\\Resized'
+    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\static\\Originals'
+    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\static\\Resized'
 
     model = streamer.load_model(streamer.get_recent_model())
 

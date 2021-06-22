@@ -1,4 +1,3 @@
-from bokeh.core.enums import FontStyle
 from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -7,7 +6,7 @@ from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
-from scripts import streamer, shareglobals_file
+from scripts import streamer
 import csv
 import pandas as pd
 from urllib.request import pathname2url
@@ -21,6 +20,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/site.db'
 db = SQLAlchemy(app)
 
 class DataPoint(db.Model):
+    """Model class for a classified image with timestamp"""
     id = db.Column(db.Integer, primary_key= True)
     timestamp = db.Column(db.DateTime, default= datetime.utcnow)
     value = db.Column(db.String, nullable= False)
@@ -39,6 +39,9 @@ predictions_list = [0,0,0,0]
 @app.route("/")
 @app.route("/home")
 def home():
+    """Route for home page with video feed and live prediction reading"""
+
+    #Data source for live prediction reading
     ajax_source = AjaxDataSource(
         data_url= url_for('ajaxprediction'),
         polling_interval=1000,
@@ -46,6 +49,7 @@ def home():
     )
     ajax_source.data = dict(x=[], y=[])
 
+    #Build plot for live prediction reading
     p = figure(
         plot_height=60,
         sizing_mode= 'scale_width',
@@ -87,7 +91,6 @@ def home():
     p.add_layout(center_annotation)
     p.add_layout(right_annotation)
     
-
     p.scatter('x', 'y',
         source=ajax_source,
         color= 'black',
@@ -108,24 +111,30 @@ def home():
 
 @app.route('/dummyajax', methods= ['POST'])
 def dummy_ajax():
+    """Called on home page load to un-cache AJAX requests in iOS"""
+
     return jsonify(message= 'Received')
 
 @app.route('/video_feed')
 def video_feed(inqueue = classification_q, outqueue = class_success_q, event = class_success_ev):
     """Video streaming route. Put this in the src attribute of an img tag."""
+
     return Response(stream_with_context(image_generator(inqueue, outqueue, event)),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/ajaxprediction', methods= ['POST'])
 def ajaxprediction():
     """Returns live data for ajax prediction graph"""
+
     global preductions_list
     return jsonify(x= predictions_list, y= [0,0,0,0])
 
 @app.route('/classify', methods = ['POST'])
 def classify(outqueue = classification_q, inqueue = class_success_q, event = class_success_ev):
     """Receives button press from user and puts value in queue for imagegenerator"""
+
     if request.method == 'POST':
+        #Get value from request, and pass it to imagegenerator function via queue
         value = request.get_data().decode('UTF-8')
         outqueue.put(value)
         event.wait()
@@ -135,11 +144,15 @@ def classify(outqueue = classification_q, inqueue = class_success_q, event = cla
 
 @app.route('/photo')
 def photo():
+    """Route for viewing individual photo"""
+
     photo_name = request.args.get('photo', 1, type=str)
     return render_template('photo.html', file_name = photo_name)
 
 @app.route("/data")
 def datapage():
+    """Route for viewing multiple photos"""
+
     with open('data/data.csv', 'r', newline='') as f:
         reader = csv.reader(f)
         next(reader)
@@ -170,6 +183,8 @@ def datapage():
 
 @app.route("/models")
 def models():
+    """Route for browsing paginated models"""
+
     model_list = os.listdir(os.path.join(os.getcwd(), 'static', 'modelpredictions'))
     model_list.reverse()
     model_requested_page = request.args.get('page', 1, type=int)
@@ -185,6 +200,8 @@ def models():
 
 @app.route("/models/<modelname>")
 def model(modelname):
+    """Route for individual model pages"""
+
     model_folder_path = os.path.join(os.getcwd(), 'static', 'modelpredictions', modelname)
     model_predictions = os.path.join(model_folder_path, 'predictions.csv')
     model_summ_path = os.path.join(model_folder_path, 'summary.txt')
@@ -228,7 +245,7 @@ def model(modelname):
     nobaby_likeliness = lambda row: -1*(row['LikelyEmpty'] - row['LikelyBaby'])
     nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(nobaby_likeliness, axis=1)
 
-    #Create plot
+    #Create plot, provide HTML tooltip which references the PhotoURL in the dataframe
     tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
     TOOLTIPS = '<div><img src= "@PhotoURL"><p>@FileName</p></div>'
 
@@ -317,6 +334,8 @@ def model(modelname):
     )
 
 def get_model_summary(path):
+    """Returns friendlier version of model summary text"""
+
     with open(path, 'r') as f:
         lines = f.readlines()
     shitty_strings = ['====', '____']
@@ -330,7 +349,7 @@ def get_model_summary(path):
 
 def paginate(list_to_pag, items_per_pag, page_requested):
     """Returns data to construct pagination buttons"""
-
+    
     pages = 1 + len(list_to_pag)//items_per_pag
     pagination_rad = 3
     
@@ -372,7 +391,8 @@ def paginate(list_to_pag, items_per_pag, page_requested):
     }
 
 def image_generator(inqueue, outqueue, event):
-    
+    """Opens RTSP stream and yields frame for multipart response"""
+
     import time
     from threading import Thread, enumerate
     from datetime import datetime, timedelta
@@ -432,10 +452,6 @@ def image_generator(inqueue, outqueue, event):
 
             yield (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
-            # yield (b'--frame\r\n'
-            # b'Content-Type: image/jpeg\r\n\r\n' + frame.frame_grey_en + b'\r\n')
-            
-            #Listen for keypress
             
     cap.release()
 

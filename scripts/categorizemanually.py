@@ -1,7 +1,6 @@
 import pandas as pd
 from cv2 import cv2
 import csv
-import generateHTML
 
 df = pd.read_csv('tobeprocessed.csv')
 
@@ -46,5 +45,3 @@ with open('data.csv', 'a', newline='') as f:
 #Clear tobeprocessed csv
 with open('tobeprocessed.csv', "w+", newline='') as f:
     csv.writer(f).writerow(['FilePath','ResizedPath','Value'])
-
-generateHTML.updateHTML()

@@ -2,7 +2,7 @@ TokensAndResponses/*
 logs/*
 models/*
 .vscode/*
-__pycache__/*
+*__pycache__*
 tobeprocessed.csv
 *.png
 pics.html

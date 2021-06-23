@@ -342,7 +342,6 @@ if __name__ == '__main__':
     stream_gone_event = Event()
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Resized'
-    picture_to_review = False
     rapid_capture = True
     auto_capture = False
     latch = False
@@ -386,7 +385,7 @@ if __name__ == '__main__':
             #Listen for keypress
             key = cv2.waitKey(43) & 0xFF
             
-            #Take snapshot every secs seconds and assign it a certain value
+            #Execute code every secs seconds and assign it a certain value
             if rapid_capture:
                 secs = 15 
                 if datetime.now().second %secs != 0:
@@ -413,7 +412,7 @@ if __name__ == '__main__':
             prev_baby_pred = frame.baby_prediction
             prev_empt_pred = frame.empty_prediction  
 
-            if key in [ord('s'), ord('0'), ord('1'), ord('2')] and \
+            if key in [ord('0'), ord('1'), ord('2')] and \
                 frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
 
                 #Save Original
@@ -424,19 +423,10 @@ if __name__ == '__main__':
                 output_path_resized = f'{OUTPUT_DIRECTORY_RESIZED}\\{frame.filename}'
                 cv2.imwrite(output_path_resized, frame.smallsize)
 
-                #Put new record in tobeprocessed CSV if 's' was pressed. Otherwise add to data csv.
-                if key == ord('s'):
-                    picture_to_review = True
-                    print(output_path_originals)
-                    with open('tobeprocessed.csv', 'a', newline='') as f:
-                        csv.writer(f).writerow([output_path_originals,output_path_resized,''])
-                else: #Key was 0, 1, or 2
-                    value = format(int(chr(key)), '.1f')
-                    print(f'{output_path_originals} value {value}')
-                    with open('./data/data.csv', 'a', newline='') as f:
-                        csv.writer(f).writerow([output_path_originals,output_path_resized,value])
-                
-                generateHTML.updateHTML()
+                value = format(int(chr(key)), '.1f')
+                print(f'{output_path_originals} value {value}')
+                with open('./data/data.csv', 'a', newline='') as f:
+                    csv.writer(f).writerow([output_path_originals,output_path_resized,value])
 
             #Close stream if q is pressed or window is closed
             if (key == ord('q')) or \
@@ -447,8 +437,3 @@ if __name__ == '__main__':
     main_end_event.set()
     
     print('End of script')
-
-    if picture_to_review:
-        from . import categorizemanually
-    
-    

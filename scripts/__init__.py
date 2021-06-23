@@ -1,8 +1,9 @@
+#Ensure project folder is added to path
 import os, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
-from pathlib import Path
+#Initialize database and app
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 

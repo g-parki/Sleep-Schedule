@@ -1,4 +1,15 @@
 import os, sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.path[0]).parent))
 
-#Add parent folder to system path to ease imports
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+from pathlib import Path
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+db_abs_path = os.path.realpath(os.path.join(Path(__file__).parent.parent, 'data', 'site.db'))
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_abs_path
+db = SQLAlchemy(app)
+
+from scripts import routes

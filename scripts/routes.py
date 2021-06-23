@@ -1,33 +1,16 @@
-from flask import Flask, render_template, request, url_for, Response, stream_with_context, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from flask import render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
 from bokeh.models.sources import AjaxDataSource
 from bokeh.transform import jitter
-from scripts import streamer
+from scripts import streamer, app
 import csv
 import pandas as pd
 from urllib.request import pathname2url
 import os
 from threading import Event
 from queue import Queue
-
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/site.db'
-db = SQLAlchemy(app)
-
-class DataPoint(db.Model):
-    """Model class for a classified image with timestamp"""
-    id = db.Column(db.Integer, primary_key= True)
-    timestamp = db.Column(db.DateTime, default= datetime.utcnow)
-    value = db.Column(db.String, nullable= False)
-    imagepath = db.Column(db.String, nullable= False)
-
-    def __repr__(self) -> str:
-        return f'ID: {self.id}\nTime: {self.timestamp}\nValue: {self.value}\nImagepath: {self.imagepath}'
 
 classification_q = Queue()
 class_success_q = Queue()
@@ -185,7 +168,7 @@ def datapage():
 def models():
     """Route for browsing paginated models"""
 
-    model_list = os.listdir(os.path.join(os.getcwd(), 'static', 'modelpredictions'))
+    model_list = os.listdir(os.path.join(os.getcwd(), 'scripts', 'static', 'modelpredictions'))
     model_list.reverse()
     model_requested_page = request.args.get('page', 1, type=int)
     model_page = paginate(model_list, 12, model_requested_page)
@@ -202,7 +185,7 @@ def models():
 def model(modelname):
     """Route for individual model pages"""
 
-    model_folder_path = os.path.join(os.getcwd(), 'static', 'modelpredictions', modelname)
+    model_folder_path = os.path.join(os.getcwd(), 'scripts', 'static', 'modelpredictions', modelname)
     model_predictions = os.path.join(model_folder_path, 'predictions.csv')
     model_summ_path = os.path.join(model_folder_path, 'summary.txt')
 
@@ -399,8 +382,8 @@ def image_generator(inqueue, outqueue, event):
     from cv2 import waitKey, cv2
     global predictions_list
     
-    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\static\\Originals'
-    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\static\\Resized'
+    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Originals'
+    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Resized'
 
     model = streamer.load_model(streamer.get_recent_model())
 
@@ -454,6 +437,3 @@ def image_generator(inqueue, outqueue, event):
             b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
             
     cap.release()
-
-if __name__ == '__main__':
-    app.run(host='192.168.1.3')

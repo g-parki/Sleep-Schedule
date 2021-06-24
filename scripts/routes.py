@@ -7,17 +7,15 @@ from bokeh.transform import jitter
 from scripts import streamer, app
 import csv
 import pandas as pd
-from urllib.request import pathname2url
 import os
 from threading import Event
 from queue import Queue
 
+#Queues and events to allow live classification of images from user
 classification_q = Queue()
 class_success_q = Queue()
 class_success_ev = Event()
-global predictions_list
 
-predictions_list = [0,0,0,0]
 
 @app.route("/")
 @app.route("/home")
@@ -102,7 +100,7 @@ def dummy_ajax():
 def video_feed(inqueue = classification_q, outqueue = class_success_q, event = class_success_ev):
     """Video streaming route. Put this in the src attribute of an img tag."""
 
-    return Response(stream_with_context(image_generator(inqueue, outqueue, event)),
+    return Response(stream_with_context(iter(streamer.Streamer(inqueue, outqueue, event))),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/ajaxprediction', methods= ['POST'])
@@ -110,7 +108,7 @@ def ajaxprediction():
     """Returns live data for ajax prediction graph"""
 
     global preductions_list
-    return jsonify(x= predictions_list, y= [0,0,0,0])
+    return jsonify(x= streamer.predictions_list, y= [0,0,0,0])
 
 @app.route('/classify', methods = ['POST'])
 def classify(outqueue = classification_q, inqueue = class_success_q, event = class_success_ev):
@@ -372,68 +370,3 @@ def paginate(list_to_pag, items_per_pag, page_requested):
         'last_ind': last_index,
         'page_length': pages
     }
-
-def image_generator(inqueue, outqueue, event):
-    """Opens RTSP stream and yields frame for multipart response"""
-
-    import time
-    from threading import Thread, enumerate
-    from datetime import datetime, timedelta
-    from cv2 import waitKey, cv2
-    global predictions_list
-    
-    OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Originals'
-    OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Resized'
-
-    model = streamer.load_model(streamer.get_recent_model())
-
-    stream_url = streamer.start_stream()
-    cap = cv2.VideoCapture(stream_url)
-
-    while True:
-        #Start refreshed stream if current one only has 30 seconds left
-        if streamer.current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
-            and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
-            t = Thread(
-                name= 'Refresh Thread',
-                target= streamer.refresh_stream_token,
-                args= [],
-                daemon= True
-            )
-            t.start()
-            print(f'{t.name} started')
-            print(f'Active threads: {[thread.name for thread in enumerate()]}')
-        
-        if cap.isOpened():
-            frame = streamer.MyFrame(cap)
-            if not frame.ret:
-                break
-
-            frame = streamer.predictor(frame, model)
-            
-            temp = predictions_list[1:]
-            temp.append(frame.prediction_strength)
-            predictions_list = temp
-
-            if not inqueue.empty() and frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
-            #Save Original
-                output_path_originals = f'{OUTPUT_DIRECTORY_ORIGINALS}\\{frame.filename}'
-                cv2.imwrite(output_path_originals, frame.original)
-            
-            #Save resized/greyscale copy
-                output_path_resized = f'{OUTPUT_DIRECTORY_RESIZED}\\{frame.filename}'
-                cv2.imwrite(output_path_resized, frame.smallsize)
-                value = inqueue.get()
-                print(f'{output_path_originals} value {value}')
-                with open('data/data.csv', 'a', newline='') as f:
-                    csv.writer(f).writerow([output_path_originals,output_path_resized,value])
-                
-                outqueue.put(f'{frame.filename} saved with value {value}')
-                event.set()
-                  
-            key = waitKey(20)
-
-            yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + frame.prediction_image_en + b'\r\n')
-            
-    cap.release()

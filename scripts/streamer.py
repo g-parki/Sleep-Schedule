@@ -9,6 +9,8 @@ from threading import Thread, Event, active_count, enumerate, currentThread
 from queue import Queue
 from tensorflow.keras.models import load_model
 import tensorflow as tf
+global predictions_list
+predictions_list = [0,0,0,0]
 
 # Restrict TensorFlow to only use the first GPU
 try:
@@ -245,6 +247,19 @@ def start_stream():
     
     return url
 
+def refresh_stream_checker():
+    global current_stream_expiration_time
+
+    if current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+        and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
+        t = Thread( name= 'Refresh Thread',
+                target= refresh_stream_token,
+                args= [],
+                daemon= True
+            )
+        t.start()
+        print(f'{t.getName()} started')
+        print(f'Active threads: {[thread.getName() for thread in enumerate()]}')
 
 class MyFrame:
     """Applies timestamp to videocapture frame, holds image and timestamp metadata"""
@@ -281,159 +296,105 @@ class MyFrame:
 
         self.frame_grey_en = cv2.imencode('.jpg', frame_grey)[1].tobytes()
 
-        
-def stream_reader(framequeue, endstream_event, response_event, streamgone_event, URL= None):
-    """Opens RTSP stream and loads frame into queue"""
+def data_saver(frame, value):
 
-    #Initial stream reader will have URL provided. Otherwise, refresh stream and close other threads.
-    if URL:
-        ('Starting stream with URL provided')
-        cap = cv2.VideoCapture(URL)
-    else:
-        new_URL = refresh_stream_token()
-        print('Starting refreshed_stream')
-        try:
-            cap = cv2.VideoCapture(new_URL)
-            print('Nothing wrong with URL')
-        except:
-            streamgone_event.set()
-
-        #Set event to end other streams saying "i'm the captain now"
-        endstream_event.set()
-        print('Endstream event set, waiting for response from prior stream.')
-
-        #Wait for other stream to kill themself
-        response_event.wait()
-        print('Response event set')
-
-        #Clear events
-        endstream_event.clear()
-        response_event.clear()
-
-    while True:
-        if cap.isOpened():
-            if not endstream_event.isSet():
-                frame = MyFrame(cap)
-                if not frame.ret:
-                    streamgone_event.set()
-                    print(f'Ret gone from {currentThread().getName()}. Streamgone event set')
-                    break
-                framequeue.put(frame)
-            else:
-                break
-        else:
-            streamgone_event.set()
-            print(f'Cap not opened in thread {currentThread().getName()}. Streamgone event set')
-            break
-
-    response_event.set()
-    cap.release()
-    print(f'{currentThread().getName()} closed')
-
-
-if __name__ == '__main__':
-
-    
-    stream_url = start_stream()
-    frame_q = Queue()
-    predicted_q = Queue()
-    main_end_event = Event()
-    response_event = Event()
-    stream_gone_event = Event()
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Resized'
-    rapid_capture = True
-    auto_capture = False
-    latch = False
-    prev_empt_pred = None
-    prev_baby_pred = None
-    model = load_model(get_recent_model())
+    VALUES = {'0.0': 'Empty', '1.0': 'Awake', '2.0': 'Asleep'}
 
-    if rapid_capture:
-        print('Rapid capture is set')
+    if frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
+        #Save Original
+        output_path_originals = f'{OUTPUT_DIRECTORY_ORIGINALS}\\{frame.filename}'
+        cv2.imwrite(output_path_originals, frame.original)
 
+        #Save resized/greyscale copy
+        output_path_resized = f'{OUTPUT_DIRECTORY_RESIZED}\\{frame.filename}'
+        cv2.imwrite(output_path_resized, frame.smallsize)
+        print(f'{output_path_originals} value {value}')
 
-    initial_reader_thread = Thread(target= stream_reader,
-                                    args= [frame_q, main_end_event, response_event, stream_gone_event, stream_url],
-                                    daemon= True
-                                    )
-    initial_reader_thread.start()
+        #Save record in CSV and return success message
+        with open('./data/data.csv', 'a', newline='') as f:
+            csv.writer(f).writerow([output_path_originals,output_path_resized,value])
+        return f'{frame.filename} saved with value "{VALUES.get(value)}"'
+    else: 
+        pass
 
-    window_name = 'Monitor'
-    while True:
-        #Exit loop if stream reader threads can't read frame
-        if stream_gone_event.isSet():
-            break
+class Streamer:
+    """Class for serving stream with prediction overlay"""
 
-        #Start refreshed stream if current one only has 30 seconds left
-        if current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
-            and active_count() == 2:
-            t = Thread(target= refresh_stream_token,
-                    args= [],
-                    daemon= True)
-            t.start()
-            print(f'{t.getName()} started')
-            print(f'Active threads: {[thread.getName() for thread in enumerate()]}')
+    def __init__(self, inqueue= None, outqueue= None, event= None):
+        global current_stream_expiration_time
+        global predictions_list
+        predictions_list = [0,0,0,0]
         
-        #Check if reader thread has placed frame in queue
-        if not frame_q.empty():
-            frame = frame_q.get()
-            frame = predictor(frame, model)
 
-            cv2.imshow(window_name, frame.prediction_image)
-           
+        self.stream_url = start_stream()
+        self.model = load_model(get_recent_model())
+        self.cap = cv2.VideoCapture(self.stream_url)
+        self.inqueue = inqueue
+        self.outqueue = outqueue
+        self.event = event
+
+    def __iter__(self):
+        """Serves stream for HTTP consumption"""
+
+        global predictions_list
+        while True:
+            #Start refreshed stream if current one only has 30 seconds left
+            refresh_stream_checker()
+            if self.cap.isOpened():
+                self.frame = MyFrame(self.cap)
+                if not self.frame.ret:
+                    break
+            self.frame = predictor(self.frame, self.model)
+
+            predictions_list = predictions_list[1:]
+            predictions_list.append(self.frame.prediction_strength)
+
+            #Listen for keypress (only used here to even out framerate)
+            self.key = cv2.waitKey(20) & 0xFF
+
+            if not self.inqueue.empty():
+                response = data_saver(frame= self.frame, value= self.inqueue.get())
+                if response:
+                    self.outqueue.put(response)
+                    self.event.set()
+            yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + self.frame.prediction_image_en + b'\r\n')
+
+
+    def __call__(self):
+        """Serves stream for local display in CV2 window"""
+
+        window_name = 'Monitor'
+        while True:
+            #Start refreshed stream if current one only has 30 seconds left
+            refresh_stream_checker()
+            if self.cap.isOpened():
+                self.frame = MyFrame(self.cap)
+                if not self.frame.ret:
+                    break
+            self.frame = predictor(self.frame, self.model)
+            cv2.imshow(window_name, self.frame.prediction_image)
+
             #Listen for keypress
-            key = cv2.waitKey(43) & 0xFF
-            
-            #Execute code every secs seconds and assign it a certain value
-            if rapid_capture:
-                secs = 15 
-                if datetime.now().second %secs != 0:
-                    latch = False
-                if not latch and datetime.now().second %secs == 0:
-                    latch = True
-                    print(f'Waiting for prediction: {frame_q.qsize()}')
-                    #key = ord('1') #Save snapshot with this value
+            self.key = cv2.waitKey(43) & 0xFF
 
-            #Automatically save frames where predictions are weak, or where the prediction changes
-            if auto_capture:  
-                if prev_baby_pred or prev_empt_pred:
-                    if frame.empty_prediction < .6 and frame.baby_prediction < .6:
-                        key = ord('s')
-                        print(f'Weak prediction: ({frame.empty_prediction: .3f},{frame.baby_prediction: .3f})')
-                        
-                    if (
-                        (prev_baby_pred > prev_empt_pred) and (frame.baby_prediction < frame.empty_prediction)
-                        or (prev_baby_pred < prev_empt_pred) and (frame.baby_prediction > frame.empty_prediction)
-                    ):
-                        key = ord('s')
-                        print('Prediction is different than previous frame')
+            #save data if key is pressed
+            if self.key in [ord('0'), ord('1'), ord('2')]:
+                response = data_saver(frame= self.frame, value= format(int(chr(self.key)), '.1f'))
+                if response:
+                    print(response)
 
-            prev_baby_pred = frame.baby_prediction
-            prev_empt_pred = frame.empty_prediction  
-
-            if key in [ord('0'), ord('1'), ord('2')] and \
-                frame.filename not in os.listdir(OUTPUT_DIRECTORY_ORIGINALS):
-
-                #Save Original
-                output_path_originals = f'{OUTPUT_DIRECTORY_ORIGINALS}\\{frame.filename}'
-                cv2.imwrite(output_path_originals, frame.original)
-                
-                #Save resized/greyscale copy
-                output_path_resized = f'{OUTPUT_DIRECTORY_RESIZED}\\{frame.filename}'
-                cv2.imwrite(output_path_resized, frame.smallsize)
-
-                value = format(int(chr(key)), '.1f')
-                print(f'{output_path_originals} value {value}')
-                with open('./data/data.csv', 'a', newline='') as f:
-                    csv.writer(f).writerow([output_path_originals,output_path_resized,value])
-
-            #Close stream if q is pressed or window is closed
-            if (key == ord('q')) or \
+            #close window
+            if (self.key == ord('q')) or \
                 cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
-                main_end_event.set()
                 break
-    
-    main_end_event.set()
-    
+        self.cap.release()
+        return None
+
+if __name__ == '__main__':
+    #Display stream in local window
+    local_stream = Streamer()
+    local_stream()
     print('End of script')

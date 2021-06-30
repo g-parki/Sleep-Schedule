@@ -10,11 +10,21 @@ class DataPoint(db.Model):
     id = db.Column(db.Integer, primary_key= True)
     timestamp = db.Column(db.DateTime, default= datetime.utcnow)
     value = db.Column(db.String, nullable= False)
-    imagepath = db.Column(db.String, nullable= False)
+    baby_reading = db.Column(db.Float, nullable= False)
+    empty_reading = db.Column(db.Float, nullable= False)
+    image_orig_path = db.Column(db.String, nullable= False)
+    image_resized_path = db.Column(db.String, nullable= False)
 
     def __repr__(self) -> str:
-        return f'ID: {self.id}\nTime: {self.timestamp}\nValue: {self.value}\nImagepath: {self.imagepath}'
+        return (f'ID: {self.id}\n'
+            f'Time: {self.timestamp}\n'
+            f'Value: {self.value}\n'
+            f'Baby Reading: {self.baby_reading}\n'
+            f'Empty Reading: {self.baby_reading}\n'
+            f'Image orig path: {self.image_orig_path}\n'
+            f'Image resized path: {self.image_resized_path}'
+        )
 
-testitem = DataPoint(value='1.0', imagepath='something')
-db.session.add(testitem)
-db.session.commit()
+def commit_item(model_obj):
+    db.session.add(model_obj)
+    db.session.commit()

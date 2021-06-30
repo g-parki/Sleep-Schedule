@@ -296,7 +296,7 @@ class MyFrame:
 
         self.frame_grey_en = cv2.imencode('.jpg', frame_grey)[1].tobytes()
 
-def data_saver(frame, value):
+def training_data_saver(frame, value):
 
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Originals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\Resized'
@@ -357,7 +357,7 @@ class Streamer:
             self.key = cv2.waitKey(20) & 0xFF
 
             if not self.inqueue.empty():
-                response = data_saver(frame= self.frame, value= self.inqueue.get())
+                response = training_data_saver(frame= self.frame, value= self.inqueue.get())
                 if response:
                     self.outqueue.put(response)
                     self.event.set()
@@ -365,8 +365,6 @@ class Streamer:
                 b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + self.frame.prediction_image_en + b'\r\n'
             )
-
-
 
     def run_local_display(self):
         """Serves stream for local display in CV2 window"""
@@ -387,7 +385,7 @@ class Streamer:
 
             #save data if key is pressed
             if self.key in [ord('0'), ord('1'), ord('2')]:
-                response = data_saver(frame= self.frame, value= format(int(chr(self.key)), '.1f'))
+                response = training_data_saver(frame= self.frame, value= format(int(chr(self.key)), '.1f'))
                 if response:
                     print(response)
 

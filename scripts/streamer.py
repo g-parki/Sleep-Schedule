@@ -324,9 +324,6 @@ class Streamer:
 
     def __init__(self, inqueue= None, outqueue= None, event= None):
         global current_stream_expiration_time
-        global predictions_list
-        predictions_list = [0,0,0,0]
-        
 
         self.stream_url = get_stream_URL()
         self.model = load_model(get_recent_model())
@@ -336,9 +333,12 @@ class Streamer:
         self.event = event
 
     def __iter__(self):
-        """Serves stream for HTTP consumption"""
+        """Serves stream as generator for either HTTP or blind consumption"""
 
+        #List of values to display on live graph
         global predictions_list
+        predictions_list = [0,0,0,0]
+
         while True:
             #Start refreshed stream if current one only has 30 seconds left
             refresh_stream_checker()
@@ -348,8 +348,10 @@ class Streamer:
                     break
             self.frame = predictor(self.frame, self.model)
 
+            #Add current prediction to beginning of prediction list
             predictions_list = predictions_list[1:]
             predictions_list.append(self.frame.prediction_strength)
+
 
             #Listen for keypress (only used here to even out framerate)
             self.key = cv2.waitKey(20) & 0xFF
@@ -359,11 +361,14 @@ class Streamer:
                 if response:
                     self.outqueue.put(response)
                     self.event.set()
-            yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + self.frame.prediction_image_en + b'\r\n')
+            yield (
+                b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + self.frame.prediction_image_en + b'\r\n'
+            )
 
 
-    def run_local(self):
+
+    def run_local_display(self):
         """Serves stream for local display in CV2 window"""
 
         window_name = 'Monitor'
@@ -393,8 +398,24 @@ class Streamer:
         self.cap.release()
         return None
 
+    def get_sample(self, sample_size = 10):
+        """Opens stream and returns list of MyFrame objects taken from stream"""
+        
+        self.samples = []
+
+        while len(self.samples) < sample_size:
+            #Start refreshed stream if current one only has 30 seconds left
+            refresh_stream_checker()
+            if self.cap.isOpened():
+                self.frame = MyFrame(self.cap)
+                if not self.frame.ret:
+                    break
+            self.frame = predictor(self.frame, self.model)
+            self.samples.append(self.frame)
+
+        self.cap.release()
+        return self.samples
+
 if __name__ == '__main__':
     #Display stream in local window
-    local_stream = Streamer()
-    local_stream.run_local()
-    print('End of script')
+    local_stream = Streamer().run_local_display()

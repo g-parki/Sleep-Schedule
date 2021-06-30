@@ -190,7 +190,7 @@ def pacific_datetime(rfc_string):
     return old_timezone.localize(gmt_expiration_date).astimezone(new_timezone).replace(tzinfo=None)
 
 
-def start_stream():
+def get_stream_URL():
     """Returns RTSP URL. Checks if previous stream URL is valid. If not, refreshes access tokens and stream tokens."""
     global current_stream_expiration_time
 
@@ -328,7 +328,7 @@ class Streamer:
         predictions_list = [0,0,0,0]
         
 
-        self.stream_url = start_stream()
+        self.stream_url = get_stream_URL()
         self.model = load_model(get_recent_model())
         self.cap = cv2.VideoCapture(self.stream_url)
         self.inqueue = inqueue
@@ -363,7 +363,7 @@ class Streamer:
             b'Content-Type: image/jpeg\r\n\r\n' + self.frame.prediction_image_en + b'\r\n')
 
 
-    def __call__(self):
+    def run_local(self):
         """Serves stream for local display in CV2 window"""
 
         window_name = 'Monitor'
@@ -396,5 +396,5 @@ class Streamer:
 if __name__ == '__main__':
     #Display stream in local window
     local_stream = Streamer()
-    local_stream()
+    local_stream.run_local()
     print('End of script')

@@ -6,6 +6,7 @@ import pandas as pd
 import os
 from threading import Event
 from queue import Queue
+import json
 
 #Queues and events to allow live classification of images from user
 classification_q = Queue()
@@ -105,6 +106,19 @@ def datapage():
         current_page= data_requested_page,
         page_length= data_page.get('page_length')
     )
+
+@app.route('/correct', methods = ['POST'])
+def correct():
+    """Updates DataPoint table with new value via ID"""
+    if request.method == 'POST':
+        #Get value from request, and pass it to imagegenerator function via queue
+        data = request.get_json()
+        item_to_update = datamodels.DataPoint.query.get(data['id'])
+        item_to_update.value = data['value']
+        datamodels.commit_item(item_to_update)
+        print(f'ID: {data["id"]}')
+        print(f'Value: {data["value"]}')
+    return 'all good'
 
 @app.route('/readings')
 def readings():

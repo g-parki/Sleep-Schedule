@@ -1,6 +1,6 @@
 from flask import render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.models.sources import AjaxDataSource
-from scripts import streamer, app, graphs
+from scripts import streamer, app, graphs, datamodels
 import csv
 import pandas as pd
 import os
@@ -104,6 +104,26 @@ def datapage():
         pagination= data_page.get('pagination_list'),
         current_page= data_requested_page,
         page_length= data_page.get('page_length')
+    )
+
+@app.route('/readings')
+def readings():
+    """Route for browsing raw database readings"""
+    readings = datamodels.DataPoint.query.all()
+    readings.reverse()
+    for reading in readings:
+        reading.file_name = reading.image_orig_path.split('\\')[-1]
+        reading.baby_reading = round(reading.baby_reading, 2)
+        reading.empty_reading = round(reading.empty_reading, 2)
+    readings_requested_page = request.args.get('page', 1, type=int)
+    readings_page = paginate(readings, 12, readings_requested_page)
+
+    return render_template(
+        'readings.html',
+        data= readings[readings_page.get('first_ind'):readings_page.get('last_ind')],
+        pagination = readings_page.get('pagination_list'),
+        current_page = readings_requested_page,
+        page_length = readings_page.get('page_length')
     )
 
 @app.route("/models")

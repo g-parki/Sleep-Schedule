@@ -43,3 +43,37 @@ $(function(){
         });
     });
 });
+
+//Send classification data point to be saved
+$(function(){
+    $('button.correction').click(function(){
+        $t = $(this);
+        new_value = $(this).attr('value')
+
+        data_to_send = {
+            id: $(this).closest('tr').children('th.id-column').text(),
+            value: new_value
+        };
+        $.ajax({
+            url: '/correct',
+            contentType: "application/json",
+            data: JSON.stringify(data_to_send),
+            type: 'POST',
+            success: function(response){
+                if ( new_value == 'Empty'){
+                    old_value = 'Baby';
+                } else {
+                    old_value = 'Empty';
+                }
+                $t.val(old_value);
+                $t.text(old_value);
+                $t.closest('div').siblings('button.dropdown-toggle').text(new_value);
+
+                console.log(response);
+            },
+            error: function(error){
+                console.log(error);
+            }
+        });
+    });
+});

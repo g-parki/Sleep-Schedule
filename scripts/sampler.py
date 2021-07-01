@@ -1,6 +1,14 @@
+#Ensure project folder is added to path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(sys.path[0]).parent))
+
+#Normal imports
 from streamer import Streamer
 from cv2 import cv2
-from datamodels import DataPoint, commit_item
+#need to ensure database imports follow same convention as other scripts
+#https://stackoverflow.com/questions/37908767/table-roles-users-is-already-defined-for-this-metadata-instance/49490203
+from scripts import datamodels
 
 def reading_image_saver(frame_obj):
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\ReadingImagesOriginals'
@@ -22,7 +30,7 @@ def add_to_database(empty_value, baby_value, orig_path, resized_path):
     else:
         value = 'Baby'
 
-    datapoint = DataPoint(
+    datapoint = datamodels.DataPoint(
         value= value,
         baby_reading = baby_value,
         empty_reading = empty_value,
@@ -30,7 +38,7 @@ def add_to_database(empty_value, baby_value, orig_path, resized_path):
         image_resized_path = resized_path
     )
 
-    commit_item(datapoint)
+    datamodels.commit_item(datapoint)
     return None
 
 def main():

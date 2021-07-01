@@ -18,13 +18,26 @@
         <tbody>
             {%for item in data%}
                 <tr>
-                    <th scope="row">{{item.id}}</th>
-                    <th scope="row">{{item.timestamp}}</th>
-                    <th scope="row">{{item.value}}</th>
-                    <th scope="row">{{item.baby_reading}}</th>
+                    <th scope="row" class="id-column">{{item.id}}</th>
+                    <th scope="row" class="timestamp-column">{{item.timestamp}}</th>
+                    <th scope="row" class="value-column">
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                {{item.value}}
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                {% if item.value == "Empty" %}
+                                <button class="dropdown-item correction" value="Baby">Baby
+                                {%else%}
+                                <button class="dropdown-item correction" value="Empty">Empty
+                                {% endif %}
+                              </button>
+                            </div>
+                          </div></th>
+                    <th scope="row" class="">{{item.baby_reading}}</th>
                     <th scope="row">{{item.empty_reading}}</th>
                     <th scope="row">
-                        <a href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
+                        <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
                             <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
                         </a>
                         

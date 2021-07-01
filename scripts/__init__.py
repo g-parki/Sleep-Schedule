@@ -10,6 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 db_abs_path = os.path.realpath(os.path.join(Path(__file__).parent.parent, 'data', 'site.db'))
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_abs_path
 db = SQLAlchemy(app)
 

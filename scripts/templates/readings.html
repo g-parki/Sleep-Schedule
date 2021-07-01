@@ -1,0 +1,65 @@
+{% extends 'layout.html' %}
+
+{% block headscript %}{% endblock headscript %}
+
+{% block content %}
+    <h2>Readings</h2>
+    <table class="table">
+        <thead class='thead-dark'>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Time Stamp</th>
+                <th scope="col">Value</th>
+                <th scope="col">Baby Reading</th>
+                <th scope="col">Empty Reading</th>
+                <th scope="col">Image</th>
+            </tr>
+        </thead>
+        <tbody>
+            {%for item in data%}
+                <tr>
+                    <th scope="row">{{item.id}}</th>
+                    <th scope="row">{{item.timestamp}}</th>
+                    <th scope="row">{{item.value}}</th>
+                    <th scope="row">{{item.baby_reading}}</th>
+                    <th scope="row">{{item.empty_reading}}</th>
+                    <th scope="row">
+                        <a href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
+                            <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
+                        </a>
+                        
+                    </th>  
+                </tr>
+            {%endfor%}
+        </tbody>
+    </table>
+    <nav aria-label="">
+        <ul class="pagination">
+            {% for page in pagination %}
+                {% if loop.first %}
+                    <li class="page-item">
+                        <a class="page-link" href="/readings?page=1" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                            <span class="sr-only">First</span>
+                        </a>
+                    </li>
+                    <li class="page-item"><a class="page-link" href="/readings?page={{page}}">Prev</a></li>
+                {% elif loop.last %}
+                    <li class="page-item"><a class="page-link" href="/readings?page={{page}}">Next</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="/readings?page={{page_length}}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;</span>
+                            <span class="sr-only">Last</span>
+                        </a>
+                    </li>
+                {% elif page == current_page %}
+                    <li class="page-item active"><a class="page-link" href="/readings?page={{page}}">{{page}}</a></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="/readings?page={{page}}">{{page}}</a></li>
+                {% endif %}
+            {%endfor%}
+        </ul>
+      </nav>
+{% endblock content %}
+
+{% block scripts%}{% endblock scripts%}

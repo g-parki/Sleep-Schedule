@@ -1,12 +1,16 @@
 from flask import render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.models.sources import AjaxDataSource
-from scripts import streamer, app, graphs, datamodels
+from scripts import streamer, app, graphs, datamodels, db_abs_path
 import csv
 import pandas as pd
 import os
 from threading import Event
 from queue import Queue
-import json
+import pytz
+from datetime import datetime
+import sqlite3
+from scripts.graphs import convert_timezone_np
+
 
 #Queues and events to allow live classification of images from user
 classification_q = Queue()
@@ -17,22 +21,79 @@ class_success_ev = Event()
 @app.route("/")
 @app.route("/home")
 def home():
-    """Route for home page with video feed and live prediction reading"""
+    """Route for current sleep schedule summary"""
+        
+    con = sqlite3.connect(db_abs_path)
 
-    #Data source for live prediction reading, initialize as empty lists
-    ajax_source = AjaxDataSource(
-        data_url= url_for('ajaxprediction'),
-        polling_interval=1000,
-        mode='replace'
+    #Get data for 24-hour graph
+    #Select all data, convert to time series index
+    df = pd.read_sql_query('SELECT * from data_point', con, index_col='timestamp')
+    df.index = pd.to_datetime(df.index)
+
+    #Create boolean nap time column, synonymous with data with baby in it. Upsample to every 1 minute
+    df['nap_time'] = df.apply(lambda row: int(row.value == 'Baby'), axis=1)
+    
+    get_file_name = lambda row: row['image_resized_path'].split('\\')[-1]
+    df['FileName'] = df.apply(get_file_name, axis=1)
+
+    create_URL = lambda row: url_for('static', filename= 'ReadingImagesResized/' + row['FileName'])
+    df['PhotoURL'] = df.apply(create_URL, axis=1)
+    filldf = df.resample('.5min').ffill()
+
+    #Build 24hr graph
+    script, div = graphs.bedtime_graph(sourceDF= df, fillsourceDF = filldf)
+
+    #Build Recent Naps Table
+    #Determine edge data points by comparing 'nap time' from one record to 'nap time' from the next
+    df['change_event'] = df['nap_time'] != df['nap_time'].shift(1)
+    df = df.dropna()
+
+    #Calculate start and end time for each nap. Also get string representations
+    napsDF = df.loc[df['change_event'] == True]
+    start_times = napsDF.index.values
+    napsDF.insert(0, column= "start_time", value= convert_timezone_np(start_times))
+    napsDF['start_date_string'] = napsDF['start_time'].dt.strftime('%a %b %d')
+    napsDF['start_time_string'] = napsDF['start_time'].dt.strftime('%I:%M%p')
+
+    end_times = napsDF['start_time'].shift(-1)
+    napsDF.insert(1, column= "end_time", value= end_times)
+    napsDF['end_time_string'] = napsDF['end_time'].dt.strftime('%I:%M%p')
+    napsDF['end_time_string'].fillna('Now', inplace= True)
+
+
+    #Filter for spans labeled as a nap, and remove unneccesary columns
+    napsDF = napsDF.loc[napsDF['nap_time'] == True]
+    napsDF = napsDF.drop(['value', 'baby_reading', 'empty_reading', 'nap_time', 'change_event'], axis=1)
+
+
+    get_duration = lambda row: row['end_time'] - row['start_time']
+    napsDF['duration'] = napsDF.apply(
+        #Calculate duration from dataframe if end_time exists
+        lambda row: get_duration(row) if not type(row['end_time']) == pd._libs.tslibs.nattype.NaTType
+        else datetime.now() - row['start_time'], #Sleep is ongoing, calculate current duration
+        axis=1
     )
-    ajax_source.data = dict(x=[], y=[])
 
-    script, div = graphs.live_prediction_graph(ajax_source)
+    hour_vs_hours = lambda hour: 'hours' if hour > 1 else 'hour'
+    minute_vs_sofar = lambda now: 'minutes' if not now == 'Now' else 'minutes so far'
+    duration_to_string = lambda row: (
+        str(row['duration'].components.hours) +
+        f' {hour_vs_hours(row["duration"].components.hours)}, ' +
+        str(row['duration'].components.minutes) +
+        f' {minute_vs_sofar(row["end_time_string"])}'
+    )
+    napsDF['duration_string'] = napsDF.apply(lambda row: duration_to_string(row), axis=1)
+
+    sleep_data = napsDF.values.tolist()
+    column_names = napsDF.columns.values.tolist()
+    data = [dict(zip(column_names, item)) for item in sleep_data]
+    data.reverse()
 
     return render_template(
         'home.html',
-        graph_div = div,
+        data= data,
         graph_script = script,
+        graph_div = div
     )
 
 @app.route('/dummyajax', methods= ['POST'])
@@ -68,6 +129,25 @@ def classify(outqueue = classification_q, inqueue = class_success_q, event = cla
         event.clear()
     return response
 
+@app.route('/livefeed')
+def livefeed():
+    """Route for home page with video feed and live prediction reading"""
+
+    #Data source for live prediction reading, initialize as empty lists
+    ajax_source = AjaxDataSource(
+        data_url= url_for('ajaxprediction'),
+        polling_interval=1000,
+        mode='replace'
+    )
+    ajax_source.data = dict(x=[], y=[])
+
+    script, div = graphs.live_prediction_graph(ajax_source)
+
+    return render_template('livefeed.html',
+        graph_div = div,
+        graph_script = script
+    )
+
 @app.route('/photo')
 def photo():
     """Route for viewing individual photo"""
@@ -100,7 +180,7 @@ def datapage():
     data_page = paginate(csv_data, 12, data_requested_page)
 
     return render_template(
-        'data.html',
+        'trainingdata.html',
         data= csv_data[data_page.get('first_ind'):data_page.get('last_ind')],
         pagination= data_page.get('pagination_list'),
         current_page= data_requested_page,
@@ -120,9 +200,12 @@ def correct():
         print(f'Value: {data["value"]}')
     return 'all good'
 
+
 @app.route('/readings')
 def readings():
     """Route for browsing raw database readings"""
+
+    #Get list of photos/data to display on page
     readings = datamodels.DataPoint.query.all()
     readings.reverse()
     for reading in readings:
@@ -274,3 +357,4 @@ def paginate(list_to_pag, items_per_pag, page_requested):
         'last_ind': last_index,
         'page_length': pages
     }
+

@@ -1,51 +1,62 @@
 {% extends 'layout.html' %}
 
-{% block headscript %}{% endblock headscript %}
+{% block headscript %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='style.css') }}">
+{% endblock headscript %}
 
 {% block content %}
     <h2>Readings</h2>
-    <table class="table">
-        <thead class='thead-dark'>
-            <tr>
-                <th scope="col">ID</th>
-                <th scope="col">Time Stamp</th>
-                <th scope="col">Value</th>
-                <th scope="col">Baby Reading</th>
-                <th scope="col">Empty Reading</th>
-                <th scope="col">Image</th>
-            </tr>
-        </thead>
-        <tbody>
-            {%for item in data%}
-                <tr>
-                    <th scope="row" class="id-column">{{item.id}}</th>
-                    <th scope="row" class="timestamp-column">{{item.timestamp}}</th>
-                    <th scope="row" class="value-column">
-                        <div class="dropdown">
-                            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                {{item.value}}
-                            </button>
-                            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                {% if item.value == "Empty" %}
-                                <button class="dropdown-item correction" value="Baby">Baby
-                                {%else%}
-                                <button class="dropdown-item correction" value="Empty">Empty
-                                {% endif %}
-                              </button>
-                            </div>
-                          </div></th>
-                    <th scope="row" class="">{{item.baby_reading}}</th>
-                    <th scope="row">{{item.empty_reading}}</th>
-                    <th scope="row">
-                        <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
-                            <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
-                        </a>
-                        
-                    </th>  
-                </tr>
-            {%endfor%}
-        </tbody>
-    </table>
+    <div class="container">
+        <div class="col-12">
+            <div class= "row justify-content-center top-buffer table-responsive">
+                <table class="table">
+                    <thead class=''>
+                        <tr>
+                            <th scope="col">Value</th>
+                            <th scope="col">Image</th>
+                            <th scope="col">Baby Reading</th>
+                            <th scope="col">Empty Reading</th>
+                            <th scope="col">Time Stamp</th>
+                            <th scope="col">ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {%for item in data%}
+                            <tr>
+                                <td scope="row" class="value-column">
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            {{item.value}}
+                                        </button>
+                                        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                            {% if item.value == "Empty" %}
+                                            <button class="dropdown-item correction" value="Baby">Baby
+                                            {%else%}
+                                            <button class="dropdown-item correction" value="Empty">Empty
+                                            {% endif %}
+                                        </button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td scope="row">
+                                    <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
+                                        <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
+                                    </a>
+                                    
+                                </td>
+                                <td scope="row" class="">{{item.baby_reading}}</td>
+                                <td scope="row">{{item.empty_reading}}</td>
+                                <td scope="row" class="timestamp-column">{{item.timestamp}}</td>
+                                <td scope="row" class="id-column">{{item.id}}</td>
+                            </tr>
+                        {%endfor%}
+                    </tbody>
+                </table>
+            </div>
+        </div> 
+    </div>
+
     <nav aria-label="">
         <ul class="pagination">
             {% for page in pagination %}
@@ -73,6 +84,7 @@
             {%endfor%}
         </ul>
       </nav>
+    {{graph_script | safe}}
 {% endblock content %}
 
 {% block scripts%}{% endblock scripts%}

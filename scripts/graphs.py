@@ -1,7 +1,19 @@
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label
+from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter
 from bokeh.transform import jitter
+import pytz
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+def convert_timezone(timestamp):
+    ts = pd.to_datetime(timestamp)
+    datetime_obj = datetime(ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second)
+    #return pytz.utc.localize(datetime_obj)
+    return pytz.utc.localize(datetime_obj).astimezone(pytz.timezone('US/Pacific')).replace(tzinfo=None)
+
+convert_timezone_np = np.vectorize(convert_timezone)
 
 def live_prediction_graph(data_source):
     """Returns script, div of plot for a live readout of the neural network inference"""
@@ -144,5 +156,54 @@ def model_performance_graph(baby_df, nobaby_df):
     p.legend.glyph_height= 20
     p.legend.background_fill_alpha = 0.7
     p.legend.border_line_width = 1
+
+    return components(p)
+
+def bedtime_graph(sourceDF, fillsourceDF):
+    """Returns script, div of a plot of automatic readings over last 24 hours"""
+    
+    tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
+    TOOLTIPS = '<div><img src= "@PhotoURL"><p>@FileName</p></div>'
+    DOT_SIZE = 7
+    DOT_ALPHA = .20
+
+    source = ColumnDataSource(
+        data= dict(
+            date= convert_timezone_np(sourceDF.index),
+            value= sourceDF['nap_time'],
+            PhotoURL= sourceDF['PhotoURL'],
+            FileName= sourceDF['FileName']
+        )
+    )
+
+    fillsource = ColumnDataSource(
+        data= dict(date= convert_timezone_np(fillsourceDF.index),
+        value=fillsourceDF['nap_time'])
+    )
+
+    p = figure(
+        x_axis_type='datetime',
+        tools= tools,
+        tooltips= TOOLTIPS,
+        active_scroll= tools[1],
+        x_range=Range1d(start=datetime.now() - timedelta(hours=24),
+            end= datetime.now(),
+            bounds= (
+                datetime.now() - timedelta(days=7),
+                datetime.now() + timedelta(hours=1)
+                )
+        ),
+        y_range=Range1d(start=-.05, end=1.05, bounds=(-.08,1.08)),
+        plot_height=200
+    )
+
+    p.circle('date', jitter('value', .04), source= source, size= DOT_SIZE, alpha= DOT_ALPHA)
+    p.varea(source=fillsource, x='date', y1=0, y2='value', alpha=0.4)
+    p.sizing_mode = 'scale_both'
+
+    p.yaxis.visible = False
+    p.ygrid.visible = False
+    p.xaxis.formatter = DatetimeTickFormatter(hours = ['%I:%M'])
+    p.xaxis.ticker.desired_num_ticks = 12
 
     return components(p)

@@ -24,7 +24,7 @@ def reading_image_saver(frame_obj):
     return output_path_originals, output_path_resized
 
 def add_to_database(empty_value, baby_value, orig_path, resized_path):
-    
+    """Adds single data point to database"""
     if empty_value > baby_value:
         value = 'Empty'
     else:
@@ -39,6 +39,10 @@ def add_to_database(empty_value, baby_value, orig_path, resized_path):
     )
 
     datamodels.commit_item(datapoint)
+    return None
+
+def create_sleep_session():
+    
     return None
 
 def main():

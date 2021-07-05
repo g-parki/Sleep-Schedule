@@ -163,8 +163,8 @@ def bedtime_graph(sourceDF, fillsourceDF):
     """Returns script, div of a plot of automatic readings over last 24 hours"""
     
     tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
-    TOOLTIPS = '<div><img src= "@PhotoURL"><p>@FileName</p></div>'
-    DOT_SIZE = 7
+    TOOLTIPS = '<div"><img src= "@PhotoURL"><p>@FileName</p></div>'
+    DOT_SIZE = 10
     DOT_ALPHA = .20
 
     source = ColumnDataSource(
@@ -185,16 +185,19 @@ def bedtime_graph(sourceDF, fillsourceDF):
         x_axis_type='datetime',
         tools= tools,
         tooltips= TOOLTIPS,
+        toolbar_location= None,
+        toolbar_sticky= False,
         active_scroll= tools[1],
         x_range=Range1d(start=datetime.now() - timedelta(hours=24),
             end= datetime.now(),
             bounds= (
                 datetime.now() - timedelta(days=7),
-                datetime.now() + timedelta(hours=1)
-                )
+                datetime.now()
+            )
         ),
-        y_range=Range1d(start=-.05, end=1.05, bounds=(-.08,1.08)),
-        plot_height=200
+        y_range=Range1d(start=-.07, end=1.07, bounds=(-.07,1.07)),
+        plot_height=200,
+        outline_line_color= None
     )
 
     p.circle('date', jitter('value', .04), source= source, size= DOT_SIZE, alpha= DOT_ALPHA)
@@ -205,5 +208,22 @@ def bedtime_graph(sourceDF, fillsourceDF):
     p.ygrid.visible = False
     p.xaxis.formatter = DatetimeTickFormatter(hours = ['%I:%M'])
     p.xaxis.ticker.desired_num_ticks = 12
+
+    return components(p)
+
+def training_data_counts_bar(counts, values):
+    """Returns bar chart of training data counts"""
+
+    p = figure(
+        x_range= values,
+        tools='',
+        outline_line_color= None,
+        plot_height=300,
+        toolbar_location= None,
+    )
+    p.vbar(x= values, top= counts, width= 0.8, alpha= 0.4)
+    p.xgrid.visible = False
+    p.yaxis.minor_tick_line_color = None
+    p.sizing_mode = 'scale_both'
 
     return components(p)

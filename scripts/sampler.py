@@ -11,6 +11,7 @@ from cv2 import cv2
 from scripts import datamodels
 
 def reading_image_saver(frame_obj):
+    """Saves MyFrame object to readings originals & resized directories"""
     OUTPUT_DIRECTORY_ORIGINALS = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\ReadingImagesOriginals'
     OUTPUT_DIRECTORY_RESIZED = 'C:\\Users\\parki\\Documents\\GitHub\\Python-Practice\\Sleep_Schedule\\scripts\\static\\ReadingImagesResized'
     
@@ -42,7 +43,6 @@ def add_to_database(empty_value, baby_value, orig_path, resized_path):
     return None
 
 def create_sleep_session():
-    
     return None
 
 def main():

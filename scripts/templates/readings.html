@@ -8,15 +8,13 @@
 {% block content %}
     <h2>Readings</h2>
     <div class="container">
-        <div class="col-12">
             <div class= "row justify-content-center top-buffer table-responsive">
                 <table class="table">
                     <thead class=''>
                         <tr>
                             <th scope="col">Value</th>
                             <th scope="col">Image</th>
-                            <th scope="col">Baby Reading</th>
-                            <th scope="col">Empty Reading</th>
+                            <th scope="col">Model Output</th>
                             <th scope="col">Time Stamp</th>
                             <th scope="col">ID</th>
                         </tr>
@@ -41,12 +39,15 @@
                                 </td>
                                 <td scope="row">
                                     <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
-                                        <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
-                                    </a>
-                                    
+                                        <img width="100" src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
+                                    </a>    
                                 </td>
-                                <td scope="row" class="">{{item.baby_reading}}</td>
-                                <td scope="row">{{item.empty_reading}}</td>
+                                <td scope="row" class="">
+                                    <p>
+                                        Baby: {{item.baby_reading}}<br>
+                                        Empty: {{item.empty_reading}}
+                                    </p>
+                                </td>
                                 <td scope="row" class="timestamp-column">{{item.timestamp}}</td>
                                 <td scope="row" class="id-column">{{item.id}}</td>
                             </tr>
@@ -54,7 +55,6 @@
                     </tbody>
                 </table>
             </div>
-        </div> 
     </div>
 
     <nav aria-label="">

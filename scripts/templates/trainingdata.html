@@ -1,27 +1,43 @@
 {% extends 'layout.html' %}
 
 {% block headscript %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
     <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/datapage.css') }}">
 {% endblock headscript %}
 
 {% block content %}
-    <h2>Data</h2>
-    <div class="card-columns">
-        {%for item in data%}
-            <div class="card text-right">
-                <img class="card-img-top"
-                src="{{url_for('static', filename= 'Resized/' + item.file_name)}}"
-                alt="Card image cap">
-                <div class="card-body card-img-overlay d-flex flex-column justify-content-end">
-                    <div class= "bg-dark text-white">
-                        <a href="/photo?photo={{item.file_name}}">
-                            <p class="card-text justify-content-end">{{item.val}}</p>
-                        </a>
-                    </div>
-                        
-                </div>
-            </div>
-        {%endfor%}
+    <div class="container">
+        <div class="row ">
+            <h3>Training Data Counts</h3>
+        </div>
+        <div class= "row justify-content-center top-buffer table-responsive">
+            {{graph_div | safe}}
+        </div>
+        <div class= "row justify-content-center top-buffer table-responsive">
+            <h3>Images</h3>
+            <table class="table table-fit">
+                <thead class=''>
+                    <tr>
+                        <th scope="col" class="th-sm">Value</th>
+                        <th scope="col" class="th-sm">Image</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {%for item in data%}
+                        <tr>
+                            <td scope="row" class="value-column">
+                                {{item.value}}
+                            </td>
+                            <td scope="row" class="image-column">
+                                <a class="reading-img" href="{{url_for('static', filename= 'Originals/' + item.file_name)}}">
+                                    <img src="{{url_for('static', filename= 'Resized/' + item.file_name)}}">
+                                </a>    
+                            </td>
+                        </tr>
+                    {%endfor%}
+                </tbody>
+            </table>
+        </div>
     </div>
     <nav aria-label="">
         <ul class="pagination">
@@ -50,6 +66,7 @@
             {%endfor%}
         </ul>
       </nav>
+    {{graph_script | safe}}
 {% endblock content %}
 
 {% block scripts%}

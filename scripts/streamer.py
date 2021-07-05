@@ -354,7 +354,7 @@ class Streamer:
 
 
             #Listen for keypress (only used here to even out framerate)
-            self.key = cv2.waitKey(20) & 0xFF
+            self.key = cv2.waitKey(25) & 0xFF
 
             if not self.inqueue.empty():
                 response = training_data_saver(frame= self.frame, value= self.inqueue.get())

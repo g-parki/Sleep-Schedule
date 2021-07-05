@@ -51,7 +51,7 @@ $(function(){
         new_value = $(this).attr('value')
 
         data_to_send = {
-            id: $(this).closest('tr').children('th.id-column').text(),
+            id: $(this).closest('tr').children('td.id-column').text(),
             value: new_value
         };
         $.ajax({
@@ -75,5 +75,12 @@ $(function(){
                 console.log(error);
             }
         });
+    });
+});
+
+//Send classification data point to be saved
+$(function(){
+    $('#playlivetext').click(function(){
+        $('#myModal').modal();
     });
 });

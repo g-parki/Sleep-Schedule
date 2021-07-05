@@ -5,46 +5,82 @@
 {% endblock headscript %}
 
 {% block content %}
-    <div class="container">
-        <div class="col-12">
-            <div class="row ">
-                <h3>Past 24 Hours</h3>
-
-            </div>
-            <div class="row justify-content-center table-responsive">
-
-                {{graph_div | safe}}
-            </div>
-            
-            <div class= "row justify-content-center top-buffer table-responsive">
-                <h3>Recent Bedtimes</h3>
-                <table class="table">
-                    <thead class=''>
-                        <tr>
-                            <th scope="col">Date</th>
-                            <th scope="col">Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {%for item in data%}
-                            <tr>
-                                <td scope="row" >
-                                    <p class= "font-weight-normal">{{item.start_date_string}}</p>
-                                </td>
-                                <td scope="row">
-                                    <p class= "font-weight-light">{{item.start_time_string}} thru {{item.end_time_string}}</p>
-                                    <p class= "font-weight-bold">{{item.duration_string}}</p>    
-                                </td>
-                            </tr>
-                        {%endfor%}
-                    </tbody>
-                </table>
-            </div>
+    <div class="container-fluid">
+        <div class="row ">
+            <h3>Past 24 Hours</h3>
+        </div>
+        <div class="row justify-content-center table-responsive">
+            {{graph_div | safe}}
         </div>
         
-        
+        <div class= "row justify-content-center top-buffer table-responsive">
+            <h3>Recent Bedtimes<br>
+                <small class="text-muted pointer-cursor" id= "playlivetext">
+                    View Live
+                    <svg id= "playbutton" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play" viewBox="0 0 16 16">
+                    <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
+                    </svg>
+                </small>
+            </h3>
+            <table class="table table-hover">
+                <!--thead class=''>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Details</th>
+                    </tr>
+                </thead-->
+                <tbody>
+                    {%for item in data%}
+                        {%if item.end_time_string == 'Now'%}
+                        <tr class="table-success table-row">
+                        {%else%}
+                        <tr class="table-row">
+                        {% endif %}
+                            <!--.stretched-link is used to make entire container a link,
+                            but this doesn't work with Safari when applied to <tr>.
+                            The workaround is to wrap contents of <td> in a <div> and mess
+                            with the padding. The <div> becomes the anchor for the streched link.
+                            -->
+                            <td scope="row" class="p-0"><!--Reduce padding of td-->
+                                <div class="position-relative p-3"><!--Increase padding of contents-->
+                                    <a href="/bedtime?start={{item.id}}&end={{item.end_id}}" class="stretched-link"></a>
+                                    <p class= "font-weight-normal">{{item.start_date_string}}</p>
+                                </div>
+                            </td>
+                            <td scope="row" class="p-0">
+                                <div class="position-relative p-3">
+                                    <a href="/bedtime?start={{item.id}}&end={{item.end_id}}" class="stretched-link"></a>
+                                    <p class= "font-weight-light">{{item.start_time_string}} thru {{item.end_time_string}}</p>
+                                    <p class= "font-weight-bold">{{item.duration_string}}</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {%endfor%}
+                </tbody>
+            </table>
+        </div>
     </div>
-    
+    <!-- Modal -->
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLongTitle">Live Video Feed</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            </div>
+            <div class="modal-body justify-content-center text-center">
+                <img id= "loader" class= "loader" src="{{ url_for('static', filename= 'loader.gif') }}" width="100%">
+                <img id= "video-feed" src="{{ url_for('video_feed') }}" width="100%">
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+        </div>
+    </div>
+
 
     {{graph_script | safe}}
 {% endblock content %}

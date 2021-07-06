@@ -2,18 +2,10 @@ from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter
 from bokeh.transform import jitter
-import pytz
-import pandas as pd
-import numpy as np
+
 from datetime import datetime, timedelta
 
-def convert_timezone(timestamp):
-    ts = pd.to_datetime(timestamp)
-    datetime_obj = datetime(ts.year, ts.month, ts.day, ts.hour, ts.minute, ts.second)
-    #return pytz.utc.localize(datetime_obj)
-    return pytz.utc.localize(datetime_obj).astimezone(pytz.timezone('US/Pacific')).replace(tzinfo=None)
-
-convert_timezone_np = np.vectorize(convert_timezone)
+from scripts.datahelpers import convert_timezone_np
 
 def live_prediction_graph(data_source):
     """Returns script, div of plot for a live readout of the neural network inference"""
@@ -81,9 +73,9 @@ def live_prediction_graph(data_source):
 def model_performance_graph(baby_df, nobaby_df):
     """Returns script, div of a plot of a model's predictions for the entire dataset"""
 
-    #HTML tooltip which references the PhotoURL in the dataframe
+    #HTML tooltip which references the photo_url in the dataframe
     tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
-    TOOLTIPS = '<div><img src= "@PhotoURL"><p>@FileName</p></div>'
+    TOOLTIPS = '<div><img src= "@photo_url"><p>@file_name</p></div>'
 
     baby_src = ColumnDataSource(data= baby_df)
     nobaby_src = ColumnDataSource(data= nobaby_df)
@@ -163,7 +155,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
     """Returns script, div of a plot of automatic readings over last 24 hours"""
     
     tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
-    TOOLTIPS = '<div"><img src= "@PhotoURL"><p>@FileName</p></div>'
+    TOOLTIPS = '<div"><img src= "@photo_url"><p>@file_name</p></div>'
     DOT_SIZE = 10
     DOT_ALPHA = .20
 
@@ -171,8 +163,8 @@ def bedtime_graph(sourceDF, fillsourceDF):
         data= dict(
             date= convert_timezone_np(sourceDF.index),
             value= sourceDF['nap_time'],
-            PhotoURL= sourceDF['PhotoURL'],
-            FileName= sourceDF['FileName']
+            photo_url= sourceDF['photo_url'],
+            file_name= sourceDF['file_name']
         )
     )
 

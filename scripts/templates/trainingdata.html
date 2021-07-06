@@ -2,41 +2,59 @@
 
 {% block headscript %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
-    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/datapage.css') }}">
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='style.css') }}">
 {% endblock headscript %}
 
 {% block content %}
-    <div class="container">
+    <div class="container-fluid">
         <div class="row ">
-            <h3>Training Data Counts</h3>
+            <div class= "col">
+                <h3>Training Data</h3>
+            </div> 
+        </div>
+        <div class= "row justify-content-center">
+            <div class= "col-sm-6 justify-content-center top-buffer">
+                <h4><small class="text-muted">Data Counts</small></h4>
+                {{graph_div | safe}}
+            </div>
+            <div class= "col-sm-6 justify-content-center top-buffer">
+                <h4><small class="text-muted">Train New Data</small></h4>
+                <img id= "loader" class= "loader" src="{{ url_for('static', filename= 'loader.gif') }}" width="70%">
+                <img id= "video-feed" src="{{ url_for('video_feed') }}" width="100%">
+                <div class="btn-group d-none text-center" role="group" aria-label="Basic example">
+                    <button type="submit" class="btn btn-secondary classification" name="classification" value=0.0>Empty</button>
+                    <button type="submit" class="btn btn-secondary classification" name= "classification" value=1.0>Awake</button>
+                    <button type="submit" class="btn btn-secondary classification" name= "classification" value=2.0> Asleep</button>   
+                </div>
+                <div class= "alert-container justify-content-center text-center" style= "position: absolute;"></div>
+            </div> 
         </div>
         <div class= "row justify-content-center top-buffer table-responsive">
-            {{graph_div | safe}}
-        </div>
-        <div class= "row justify-content-center top-buffer table-responsive">
-            <h3>Images</h3>
-            <table class="table table-fit">
-                <thead class=''>
-                    <tr>
-                        <th scope="col" class="th-sm">Value</th>
-                        <th scope="col" class="th-sm">Image</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {%for item in data%}
+            <div class= "col">
+                <h3>Images</h3>
+                <table class="table">
+                    <thead class=''>
                         <tr>
-                            <td scope="row" class="value-column">
-                                {{item.value}}
-                            </td>
-                            <td scope="row" class="image-column">
-                                <a class="reading-img" href="{{url_for('static', filename= 'Originals/' + item.file_name)}}">
-                                    <img src="{{url_for('static', filename= 'Resized/' + item.file_name)}}">
-                                </a>    
-                            </td>
+                            <th scope="col" class="th-sm">Value</th>
+                            <th scope="col" class="th-sm">Image</th>
                         </tr>
-                    {%endfor%}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {%for item in data%}
+                            <tr>
+                                <td scope="row" class="value-column">
+                                    {{item.value}}
+                                </td>
+                                <td scope="row" class="image-column">
+                                    <a class="reading-img" href="{{url_for('static', filename= 'Originals/' + item.file_name)}}">
+                                        <img src="{{url_for('static', filename= 'Resized/' + item.file_name)}}">
+                                    </a>    
+                                </td>
+                            </tr>
+                        {%endfor%}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <nav aria-label="">

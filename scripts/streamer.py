@@ -247,10 +247,10 @@ def get_stream_URL():
     
     return url
 
-def refresh_stream_checker():
+def refresh_stream_checker(expires_in_seconds):
     global current_stream_expiration_time
 
-    if current_stream_expiration_time < datetime.now() + timedelta(seconds=30) \
+    if current_stream_expiration_time < datetime.now() + timedelta(seconds= expires_in_seconds) \
         and 'Refresh Thread' not in [thread.name for thread in enumerate()]:
         t = Thread( name= 'Refresh Thread',
                 target= refresh_stream_token,
@@ -341,11 +341,15 @@ class Streamer:
 
         while True:
             #Start refreshed stream if current one only has 30 seconds left
-            refresh_stream_checker()
+            refresh_stream_checker(expires_in_seconds = 45)
             if self.cap.isOpened():
                 self.frame = MyFrame(self.cap)
                 if not self.frame.ret:
                     break
+            else:
+                #Reopen capture object, then try again
+                self.cap = cv2.VideoCapture(self.stream_url)
+                continue
             self.frame = predictor(self.frame, self.model)
 
             #Add current prediction to beginning of prediction list
@@ -371,12 +375,16 @@ class Streamer:
 
         window_name = 'Monitor'
         while True:
-            #Start refreshed stream if current one only has 30 seconds left
-            refresh_stream_checker()
+            #Start refreshed stream if current one only has 60 seconds left
+            refresh_stream_checker(expires_in_seconds= 60)
             if self.cap.isOpened():
                 self.frame = MyFrame(self.cap)
                 if not self.frame.ret:
                     break
+            else:
+                #Reopen capture object, then try again
+                self.cap = cv2.VideoCapture(self.stream_url)
+                continue
             self.frame = predictor(self.frame, self.model)
             cv2.imshow(window_name, self.frame.prediction_image)
 
@@ -403,7 +411,7 @@ class Streamer:
 
         while len(self.samples) < sample_size:
             #Start refreshed stream if current one only has 30 seconds left
-            refresh_stream_checker()
+            refresh_stream_checker(expires_in_seconds = 30)
             if self.cap.isOpened():
                 self.frame = MyFrame(self.cap)
                 if not self.frame.ret:

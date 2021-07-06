@@ -7,13 +7,17 @@
 {% block content %}
     <div class="container-fluid">
         <div class="row ">
-            <h3>Past 24 Hours</h3>
+            <div class= "col">
+                <h3>Past 24 Hours</h3>
+            </div>
         </div>
-        <div class="row justify-content-center table-responsive">
-            {{graph_div | safe}}
+        <div class="row justify-content-center">
+            <div class= "col">
+                {{graph_div | safe}}
+            </div>
         </div>
         
-        <div class= "row justify-content-center top-buffer table-responsive">
+        <div class= "justify-content-center top-buffer table-responsive">
             <h3>Recent Bedtimes<br>
                 <small class="text-muted pointer-cursor" id= "playlivetext">
                     View Live
@@ -22,41 +26,14 @@
                     </svg>
                 </small>
             </h3>
-            <table class="table table-hover">
+            <table id="homepagetable" class="table table-hover">
                 <!--thead class=''>
                     <tr>
                         <th scope="col">Date</th>
                         <th scope="col">Details</th>
                     </tr>
                 </thead-->
-                <tbody>
-                    {%for item in data%}
-                        {%if item.end_time_string == 'Now'%}
-                        <tr class="table-success table-row">
-                        {%else%}
-                        <tr class="table-row">
-                        {% endif %}
-                            <!--.stretched-link is used to make entire container a link,
-                            but this doesn't work with Safari when applied to <tr>.
-                            The workaround is to wrap contents of <td> in a <div> and mess
-                            with the padding. The <div> becomes the anchor for the streched link.
-                            -->
-                            <td scope="row" class="p-0"><!--Reduce padding of td-->
-                                <div class="position-relative p-3"><!--Increase padding of contents-->
-                                    <a href="/bedtime?start={{item.id}}&end={{item.end_id}}" class="stretched-link"></a>
-                                    <p class= "font-weight-normal">{{item.start_date_string}}</p>
-                                </div>
-                            </td>
-                            <td scope="row" class="p-0">
-                                <div class="position-relative p-3">
-                                    <a href="/bedtime?start={{item.id}}&end={{item.end_id}}" class="stretched-link"></a>
-                                    <p class= "font-weight-light">{{item.start_time_string}} <small class= "text-muted font-weight-light">thru</small> {{item.end_time_string}}</p>
-                                    <p class= "font-weight-bold">{{item.duration_string}}</p>
-                                </div>
-                            </td>
-                        </tr>
-                    {%endfor%}
-                </tbody>
+                {{rendered_table | safe}}
             </table>
         </div>
     </div>
@@ -80,7 +57,12 @@
         </div>
         </div>
     </div>
-
-
     {{graph_script | safe}}
 {% endblock content %}
+{% block scripts%}
+    <script>
+        $(document).ready(function(){
+            //code that works goes here
+        });
+    </script>
+{% endblock scripts%}

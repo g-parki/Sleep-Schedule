@@ -18,7 +18,7 @@ def home():
     """Route for current sleep schedule summary"""
 
     #Get dataframe of sleep data, plus another upsampled to every minute for filling a bar graph
-    df, fillDF = datahelpers.get_all_nap_data()
+    df, fillDF = datahelpers.get_all_nap_data(with_upsample= True)
 
     #Build 24hr graph
     script, div = graphs.bedtime_graph(sourceDF= df.iloc[::2, :], fillsourceDF = fillDF)
@@ -28,20 +28,34 @@ def home():
 
     return render_template(
         'home.html',
-        data= data,
         graph_script = script,
-        graph_div = div
+        graph_div = div,
+        rendered_table = render_template(
+            'subtemplates/bedtimestable.html',
+            data= data
+        )
     )
+
+@app.route('/refreshbedtimes')
+def refresh_bedtimes():
+
+    data = datahelpers.aggregate_nap_data(datahelpers.get_all_nap_data())
+
+    return render_template(
+            'subtemplates/bedtimestable.html',
+            data= data
+        )
 
 @app.route('/bedtime')
 def bedtime():
     start_id = request.args.get('start', 1, type=int)
     end_id = request.args.get('end', 1, type=int)
-    data, time_string_first, time_string_last = datahelpers.get_bedtime_data(start_id, end_id)
+    data, date_string, time_string_first, time_string_last = datahelpers.get_bedtime_data(start_id, end_id)
     
     return render_template(
         'bedtime.html',
         data = data,
+        date_string = date_string,
         start_time_string = time_string_first,
         end_time_string = time_string_last
     )

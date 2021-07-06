@@ -1,8 +1,9 @@
 from bokeh.models.tools import HoverTool
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter
+from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter, RangeTool
 from bokeh.transform import jitter
+from bokeh.layouts import column
 
 from datetime import datetime, timedelta
 
@@ -155,7 +156,7 @@ def model_performance_graph(baby_df, nobaby_df):
 def bedtime_graph(sourceDF, fillsourceDF):
     """Returns script, div of a plot of automatic readings over last 24 hours"""
     
-    tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
+    tools = [PanTool()]
     TOOLTIPS = '<div"><img src= "@photo_url"><p>@file_name</p></div>'
     DOT_SIZE = 10
     DOT_ALPHA = .20
@@ -179,7 +180,6 @@ def bedtime_graph(sourceDF, fillsourceDF):
         tools= tools,
         toolbar_location= None,
         toolbar_sticky= False,
-        active_scroll= tools[1],
         x_range=Range1d(start=datetime.now() - timedelta(hours=24),
             end= datetime.now(),
             bounds= (
@@ -192,23 +192,40 @@ def bedtime_graph(sourceDF, fillsourceDF):
         outline_line_color= None
     )
     #Main blue dots
-    p.circle('date', jitter('value', .05), source= source, size= DOT_SIZE, alpha= DOT_ALPHA)
+    dots = p.circle('date', jitter('value', .05), source= source, size= DOT_SIZE, alpha= DOT_ALPHA, hover_alpha= 0.9)
     
-    #Create invisible, slightly larger dots for the hover tool
+    #Vertical line hover tool
     #Based on example https://docs.bokeh.org/en/latest/docs/user_guide/styling.html
-    hover_dots = p.circle('date', 'value', source= source, size= 12, alpha= 0)
-    p.add_tools(HoverTool(tooltips= TOOLTIPS, renderers=[hover_dots], mode= 'vline'))
-
+    p.add_tools(HoverTool(tooltips= TOOLTIPS, renderers=[dots], mode= 'vline'))
+    
     #Bar graph made of upsampled data
     p.varea(source=fillsource, x='date', y1=0.25, y2='value', alpha=0.3)
+
+    #Range tool for scrolling
+    select = figure(
+        y_range = p.y_range,
+        x_range = p.x_range.bounds,
+        x_axis_type='datetime',
+        y_axis_type=None,
+        tools='',
+        toolbar_location= None,
+        plot_height=50,
+    )
+    range_tool = RangeTool(x_range=p.x_range)
+    range_tool.overlay.fill_alpha = 0.5
+    select.varea(source=fillsource, x='date', y1=0.25, y2='value', alpha=.2)
+    select.add_tools(range_tool)
+    select.toolbar.active_multi = range_tool
+    select.sizing_mode = "stretch_width"
     
-    p.sizing_mode = 'scale_both'
+    
+    p.sizing_mode = "stretch_both"
     p.yaxis.visible = False
     p.ygrid.visible = False
     p.xaxis.formatter = DatetimeTickFormatter(hours = ['%I:%M'])
     p.xaxis.ticker.desired_num_ticks = 12
 
-    return components(p)
+    return components(column(p, select, sizing_mode="stretch_both"))
 
 def training_data_counts_bar(counts, values):
     """Returns bar chart of training data counts"""

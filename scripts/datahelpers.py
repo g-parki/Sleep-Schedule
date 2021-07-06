@@ -24,21 +24,23 @@ is_NaT = lambda time_obj: type(time_obj) == pd._libs.tslibs.nattype.NaTType
 #Assumes column name, so row to be passed in:
 get_val_string = lambda row: TRAININGDATA_VALUE_DICT.get(str(row['Value']))
 
-def get_all_nap_data():
+def get_all_nap_data(with_upsample = False):
     
     df = get_readings(as_df = True, with_values = False)
 
     #Create boolean nap time column, synonymous with data with baby in it. Upsample to every 1 minute
     df['nap_time'] = df.apply(lambda row: int(row.value == 'Baby'), axis=1)
-    
-    get_file_name = lambda row: row['image_resized_path'].split('\\')[-1]
-    df['file_name'] = df.apply(get_file_name, axis=1)
+    df['file_name'] = df.apply(lambda row: get_file_name(row['image_resized_path']), axis= 1)
 
     create_URL = lambda row: url_for('static', filename= 'ReadingImagesResized/' + row['file_name'])
     df['photo_url'] = df.apply(create_URL, axis=1)
-    fillDF = df.resample('.5min').ffill()
+    
+    if with_upsample:
+        fillDF = df.resample('.5min').ffill()
+        return df, fillDF
+    else:
+        return df
 
-    return df, fillDF
 
 def aggregate_nap_data(df):
     #Build Recent Naps Table
@@ -48,11 +50,6 @@ def aggregate_nap_data(df):
 
     #Calculate start and end time for each nap. Also get string representations
     napsDF = df.loc[df['change_event'] == True]
-    start_times = napsDF.index.values
-    napsDF.insert(0, column= "start_time", value= convert_timezone_np(start_times))
-    napsDF['start_timestamp'] = start_times
-    napsDF['end_timestamp'] = napsDF['start_timestamp'].shift(-1)
-    
 
     napsDF['start_date_string'] = napsDF.apply(lambda row: today_or_yesterday(row['start_time']), axis=1)
     napsDF['start_time_string'] = napsDF.apply(lambda row: time_string(row['start_time']), axis=1)
@@ -106,6 +103,10 @@ def get_readings(as_df = False, with_values = True):
     query = db.session.query(datamodels.DataPoint)
     df = pd.read_sql_query(query.statement, db.session.bind, index_col='timestamp')
     df['file_name'] = df.apply(lambda row: get_file_name(row['image_orig_path']), axis=1)
+
+    start_times = df.index.values
+    df.insert(0, column= "start_time", value= convert_timezone_np(start_times))
+    
     if with_values:
         for field in ['baby_reading', 'empty_reading']:
             df[field] = df.apply(lambda row: round_number_for_display(row[field]), axis=1)
@@ -137,12 +138,13 @@ def get_bedtime_data(start_id, end_id):
     df['time_string'] = df.apply(lambda row: time_string(row['time']), axis=1)
     df['file_name'] = df.apply(lambda row: get_file_name(row['image_resized_path']), axis=1)
 
+    date_string = today_or_yesterday(df.iloc[0]['time'])
     time_string_first = df.iloc[0]['time_string']
     #Check if time_string_last has already been set to "Now"
     if not time_string_last == 'Now':
         time_string_last = df.iloc[-1]['time_string']
 
-    return df_to_dict_list(df), time_string_first, time_string_last
+    return df_to_dict_list(df), date_string, time_string_first, time_string_last
 
 def df_to_dict_list(df, reverse= True):
     """Returns data as list of dictionaries for each item in a dataframe"""
@@ -164,7 +166,7 @@ def duration_to_string(row):
     
     returned_string = ''
     hours = row['duration'].components.hours
-    minutes = row['duration'].components.minutes
+    minutes = row['duration'].components.minutes + 1*(row['duration'].components.seconds > 29)
 
     if hours:
         returned_string += (

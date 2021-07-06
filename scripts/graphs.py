@@ -1,3 +1,4 @@
+from bokeh.models.tools import HoverTool
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
 from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter
@@ -162,7 +163,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
     source = ColumnDataSource(
         data= dict(
             date= convert_timezone_np(sourceDF.index),
-            value= sourceDF['nap_time'],
+            value= 0.5*sourceDF['nap_time']+0.25,
             photo_url= sourceDF['photo_url'],
             file_name= sourceDF['file_name']
         )
@@ -170,13 +171,12 @@ def bedtime_graph(sourceDF, fillsourceDF):
 
     fillsource = ColumnDataSource(
         data= dict(date= convert_timezone_np(fillsourceDF.index),
-        value=fillsourceDF['nap_time'])
+        value= .5*fillsourceDF['nap_time']+.25)
     )
 
     p = figure(
         x_axis_type='datetime',
         tools= tools,
-        tooltips= TOOLTIPS,
         toolbar_location= None,
         toolbar_sticky= False,
         active_scroll= tools[1],
@@ -191,11 +191,18 @@ def bedtime_graph(sourceDF, fillsourceDF):
         plot_height=200,
         outline_line_color= None
     )
+    #Main blue dots
+    p.circle('date', jitter('value', .05), source= source, size= DOT_SIZE, alpha= DOT_ALPHA)
+    
+    #Create invisible, slightly larger dots for the hover tool
+    #Based on example https://docs.bokeh.org/en/latest/docs/user_guide/styling.html
+    hover_dots = p.circle('date', 'value', source= source, size= 12, alpha= 0)
+    p.add_tools(HoverTool(tooltips= TOOLTIPS, renderers=[hover_dots], mode= 'vline'))
 
-    p.circle('date', jitter('value', .04), source= source, size= DOT_SIZE, alpha= DOT_ALPHA)
-    p.varea(source=fillsource, x='date', y1=0, y2='value', alpha=0.4)
+    #Bar graph made of upsampled data
+    p.varea(source=fillsource, x='date', y1=0.25, y2='value', alpha=0.3)
+    
     p.sizing_mode = 'scale_both'
-
     p.yaxis.visible = False
     p.ygrid.visible = False
     p.xaxis.formatter = DatetimeTickFormatter(hours = ['%I:%M'])

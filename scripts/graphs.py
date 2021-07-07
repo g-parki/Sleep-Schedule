@@ -210,6 +210,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
         tools='',
         toolbar_location= None,
         plot_height=50,
+        outline_line_color= None,
     )
     range_tool = RangeTool(x_range=p.x_range)
     range_tool.overlay.fill_alpha = 0.5

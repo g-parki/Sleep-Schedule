@@ -14,6 +14,7 @@ class DataPoint(db.Model):
     empty_reading = db.Column(db.Float, nullable= False)
     image_orig_path = db.Column(db.String, nullable= False)
     image_resized_path = db.Column(db.String, nullable= False)
+    in_training_data = db.Column(db.Boolean, nullable= True)
 
     def __repr__(self) -> str:
         return (f'ID: {self.id}\n'
@@ -22,7 +23,8 @@ class DataPoint(db.Model):
             f'Baby Reading: {self.baby_reading}\n'
             f'Empty Reading: {self.baby_reading}\n'
             f'Image orig path: {self.image_orig_path}\n'
-            f'Image resized path: {self.image_resized_path}'
+            f'Image resized path: {self.image_resized_path}\n'
+            f'In training data: {self.in_training_data}'
         )
 
 def commit_item(model_obj):

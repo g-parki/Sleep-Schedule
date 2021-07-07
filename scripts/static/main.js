@@ -23,9 +23,9 @@ $("#video-feed").on('load', function(){
     $('.bk').removeClass('d-none');
 });
 
-//Send classification data point to be saved
+//Send classification data point to be saved from live stream
 $(function(){
-    $('button.classification').click(function(){
+    $('button.live-classification').click(function(){
         value = $(this).attr('value');
         $.ajax({
             url: '/classify',
@@ -78,9 +78,32 @@ $(function(){
     });
 });
 
-//Send classification data point to be saved
-$(function(){
-    $('#playlivetext').click(function(){
-        $('#myModal').modal();
+$('button.reading-classification').click(function(){
+    $t = $(this);
+    value = $(this).attr('value');
+    id = $(this).closest('tr').children('td.id-column').text();
+    
+    data_to_send = {
+        id: id,
+        value: value,
+    };
+    $.ajax({
+        url: '/classifyreading',
+        contentType: "application/json",
+        data: JSON.stringify(data_to_send),
+        type: 'POST',
+        success: function(response){
+            $t.closest('div').addClass('d-none');
+            $t.closest('tr').find('div.included-in').removeClass('d-none');
+            console.log(response);
+        },
+        error: function(error){
+            console.log(error);
+        }
     });
+    
+});
+
+$('#playlivetext').click(function(){
+    $('#myModal').modal();
 });

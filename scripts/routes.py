@@ -93,6 +93,17 @@ def classify(outqueue = classification_q, inqueue = class_success_q, event = cla
         event.clear()
     return response
 
+@app.route('/classifyreading', methods= ['POST'])
+def classify_reading():
+    """Receive ID and value of database reading to save to training data"""
+    data = request.get_json()
+    id = int(data['id'])
+    value = str(data['value'])
+
+    response = datahelpers.save_reading_to_training_data(id, value)
+    
+    return response
+
 @app.route('/livefeed')
 def livefeed():
     """Route for home page with video feed and live prediction reading"""

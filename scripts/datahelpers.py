@@ -1,5 +1,7 @@
 import sys
 from pathlib import Path
+
+from numpy.core.fromnumeric import resize
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
 from datetime import datetime, date, timedelta
@@ -8,6 +10,7 @@ import pandas as pd
 import numpy as np
 import pytz
 from flask import url_for
+import csv
 
 
 #Shared constants
@@ -16,6 +19,7 @@ TRAININGDATA_VALUE_DICT = {'0.0': 'Empty', '1.0': 'Awake', '2.0': 'Asleep'}
 #Shared dataframe column calculations
 #Requires field to be passed in:
 get_file_name = lambda file_path: file_path.split('\\')[-1]
+get_folder_name = lambda file_path: file_path.split('\\')[-2]
 round_number_for_display = lambda number: round(number, 2)
 time_string = lambda time_obj: time_obj.strftime('%I:%M %p')
 date_string = lambda time_obj: time_obj.strftime('%a %b %d')
@@ -25,7 +29,8 @@ is_NaT = lambda time_obj: type(time_obj) == pd._libs.tslibs.nattype.NaTType
 get_val_string = lambda row: TRAININGDATA_VALUE_DICT.get(str(row['Value']))
 
 def get_all_nap_data(with_upsample = False):
-    
+    """Returns dataframe of all bedtime readings, and optionally an upsampled dataframe"""
+
     df = get_readings(as_df = True, with_values = False)
 
     #Create boolean nap time column, synonymous with data with baby in it. Upsample to every 1 minute
@@ -43,6 +48,8 @@ def get_all_nap_data(with_upsample = False):
 
 
 def aggregate_nap_data(df):
+    """Return dictionary list of bedtimes with friendly rendered text"""
+
     #Build Recent Naps Table
     #Determine edge data points by comparing 'nap time' from one record to 'nap time' from the next
     df['change_event'] = df['nap_time'] != df['nap_time'].shift(1)
@@ -90,7 +97,9 @@ def get_training_data():
 
     df = pd.read_csv('data/data.csv')
     df['value'] = df.apply(get_val_string, axis=1)
-    df['file_name'] = df.apply(lambda row: get_file_name(row['ResizedPath']), axis=1)
+    df['folder_resized'] = df.apply(lambda row: get_folder_name(row['ResizedPath']), axis=1)
+    df['folder_original'] = df.apply(lambda row: get_folder_name(row['FilePath']), axis=1)
+    df['file_name'] = df.apply(lambda row: get_file_name(row['FilePath']), axis=1)
 
     #Info for bar chart on data page
     counts = df['value'].value_counts().to_list()
@@ -178,6 +187,20 @@ def duration_to_string(row):
         f' minute{plural_or_not(minutes)}{so_far(row["end_time_string"])}'
     )
     return returned_string
+
+def save_reading_to_training_data(id, value):
+    """Saves existing database reading to training data CSV"""
+    data = datamodels.DataPoint.query.filter(datamodels.DataPoint.id == id)[0]
+    original_path = data.image_orig_path
+    resized_path = data.image_resized_path
+
+    with open('./data/data.csv', 'a', newline='') as f:
+        csv.writer(f).writerow([original_path,resized_path,value])
+
+    data.in_training_data = True
+    datamodels.commit_item(data)
+
+    return f'{original_path} {resized_path} {id} {value}'
 
 def get_model_summary(path):
     """Returns friendlier version of model summary text"""

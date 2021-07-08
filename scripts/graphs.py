@@ -188,7 +188,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
             )
         ),
         y_range=Range1d(start=-.07, end=1.07, bounds=(-.07,1.07)),
-        plot_height=200,
+        plot_height=300,
         outline_line_color= None
     )
     #Main blue dots
@@ -238,9 +238,11 @@ def training_data_counts_bar(counts, values):
         plot_height=300,
         toolbar_location= None,
     )
-    p.vbar(x= values, top= counts, width= 0.8, alpha= 0.4)
+    
+    p.vbar(x= values, top= counts, width= 0.6, alpha= 0.4)
+
     p.xgrid.visible = False
     p.yaxis.minor_tick_line_color = None
-    p.sizing_mode = 'scale_both'
+    p.sizing_mode = 'stretch_both'
 
     return components(p)

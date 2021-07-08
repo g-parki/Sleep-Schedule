@@ -2,88 +2,46 @@
 
 {% block headscript %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
-    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='style.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='style.css') }}">
 {% endblock headscript %}
 
 {% block content %}
     <div class="container-fluid">
-        <div class="row ">
-            <div class= "col">
-                <h3>Training Data</h3>
-            </div> 
-        </div>
-        <div class= "row justify-content-center">
-            <div class= "col-sm-6 justify-content-center top-buffer">
-                <h4><small class="text-muted">Data Counts</small></h4>
+        <div class="row justify-content-center">
+            <div class="col-sm-4 justify-content-center top-buffer">
+                <h3>Count <small class="text-muted">images</small></h3>
                 {{graph_div | safe}}
             </div>
-            <div class= "col-sm-6 justify-content-center top-buffer">
-                <h4><small class="text-muted">Train New Data</small></h4>
-                <img id= "loader" class= "loader" src="{{ url_for('static', filename= 'loader.gif') }}" width="70%">
-                <img id= "video-feed" src="{{ url_for('video_feed') }}" width="100%">
-                <div class="btn-group d-none text-center" role="group" aria-label="Basic example">
-                    <button type="submit" class="btn btn-secondary live-classification" name="classification" value=0.0>Empty</button>
-                    <button type="submit" class="btn btn-secondary live-classification" name= "classification" value=1.0>Awake</button>
-                    <button type="submit" class="btn btn-secondary live-classification" name= "classification" value=2.0> Asleep</button>   
+            <div class="col-sm-8 justify-content-center top-buffer">
+                <h3>Train <small class="text-muted">from live stream</small></h3>
+                <div class="" style="position: relative; justify-content: center;">
+                    <img id="loader" class="loader" src="{{ url_for('static', filename='loader.gif') }}" width="100%">
+                    <div class="video-container" style="position: relative; justify-content: center;">
+                        <img id="video-feed" class="" src="{{ url_for('video_feed') }}" width="100%" height="auto">
+                        <div class="btn-group-live btn-group-sm d-none text-center overlay-btn-grp" role="group" aria-label="Basic example">
+                            <button type="submit" class="btn btn-primary live-classification" name="classification" value=0.0>Empty</button>
+                            <button type="submit" class="btn btn-primary live-classification" name="classification" value=1.0>Awake</button>
+                            <button type="submit" class="btn btn-primary live-classification" name="classification" value=2.0> Asleep</button>   
+                        </div>
+                    </div>
                 </div>
-                <div class= "alert-container justify-content-center text-center" style= "position: absolute;"></div>
+                <div class="alert-container justify-content-center text-center" style="position: absolute;"></div>
             </div> 
         </div>
-        <div class= "row justify-content-center top-buffer table-responsive">
-            <div class= "col">
-                <h3>Images</h3>
-                <table class="table">
-                    <thead class=''>
-                        <tr>
-                            <th scope="col" class="th-sm">Value</th>
-                            <th scope="col" class="th-sm">Image</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {%for item in data%}
-                            <tr>
-                                <td scope="row" class="value-column">
-                                    {{item.value}}
-                                </td>
-                                <td scope="row" class="image-column">
-                                    <a class="reading-img" href="{{url_for('static', filename= item.folder_original + '/' + item.file_name)}}">
-                                        <img src="{{url_for('static', filename= item.folder_resized + '/' + item.file_name)}}">
-                                    </a>    
-                                </td>
-                            </tr>
-                        {%endfor%}
-                    </tbody>
-                </table>
+        <p class="top-buffer"></p>
+        <hr>
+        <div class="row justify-content-center top-buffer table-responsive">
+            <div class="col">
+                <h3>Browse <small class="text-muted">images</small></h3>
             </div>
         </div>
+        <div id="tablecontainer">
+            {{table | safe}}
+        </div>
     </div>
-    <nav aria-label="">
-        <ul class="pagination">
-            {% for page in pagination %}
-                {% if loop.first %}
-                    <li class="page-item">
-                        <a class="page-link" href="/data?page=1" aria-label="Previous">
-                            <span aria-hidden="true">&laquo;</span>
-                            <span class="sr-only">First</span>
-                        </a>
-                    </li>
-                    <li class="page-item"><a class="page-link" href="/data?page={{page}}">Prev</a></li>
-                {% elif loop.last %}
-                    <li class="page-item"><a class="page-link" href="/data?page={{page}}">Next</a></li>
-                    <li class="page-item">
-                        <a class="page-link" href="/data?page={{page_length}}" aria-label="Last">
-                            <span aria-hidden="true">&raquo;</span>
-                            <span class="sr-only">Last</span>
-                        </a>
-                    </li>
-                {% elif page == current_page %}
-                    <li class="page-item active"><a class="page-link" href="/data?page={{page}}">{{page}}</a></li>
-                {% else %}
-                    <li class="page-item"><a class="page-link" href="/data?page={{page}}">{{page}}</a></li>
-                {% endif %}
-            {%endfor%}
-        </ul>
-      </nav>
+    <div id="pagcontainer">
+        {{pagination_nav | safe}}
+    </div>
     {{graph_script | safe}}
 {% endblock content %}
 

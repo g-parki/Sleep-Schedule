@@ -15,3 +15,15 @@ table.table-fit thead th, table.table-fit tfoot th {
 table.table-fit tbody td, table.table-fit tfoot td {
     width: auto !important;
 }
+.overlay-btn-grp{
+    position: absolute;
+    bottom: 8px;
+}
+.overlay-btn-grp-sm{
+    position: absolute;
+    bottom: 35px;
+}
+.video-container{
+    display: flex;
+    justify-content: center;
+}

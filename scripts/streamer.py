@@ -134,6 +134,10 @@ def refresh_stream_token():
         
     device_ID = get_device_ID(PROJECT_ID, './TokensAndResponses/accesstokens.json')
 
+    access_token = refresh_access_token('./TokensAndResponses/client_secret.json',
+                                        './TokensAndResponses/refreshtokens.json',
+                                        './TokensAndResponses/accesstokens.json')
+
     #Get previous URL, stream token, and extension token
     with open('./TokensAndResponses/streaminfo.json', 'r') as f:
         original_data = json.load(f)
@@ -144,10 +148,6 @@ def refresh_stream_token():
         #Remove old stream token from url
         base_URL = previous_URL.split(stream_token)[0]
     
-    access_token = refresh_access_token('./TokensAndResponses/client_secret.json',
-                                        './TokensAndResponses/refreshtokens.json',
-                                        './TokensAndResponses/accesstokens.json')     
-
     #Build request for stream extension token
     _headers = {'Content-Type':'application/json', 'Authorization': f'Bearer {access_token}'}
     _data = {"command":"sdm.devices.commands.CameraLiveStream.ExtendRtspStream",

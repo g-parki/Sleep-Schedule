@@ -202,6 +202,16 @@ def save_reading_to_training_data(id, value):
 
     return f'{original_path} {resized_path} {id} {value}'
 
+def update_training_csv(filename, new_value):
+    
+    df = pd.read_csv('data/data.csv')
+    df['file_name'] = df.apply(lambda row: get_file_name(row['FilePath']), axis=1)
+    df.loc[df['file_name'] == filename, 'Value'] = new_value
+    df.drop(['file_name'], axis=1, inplace=True)
+    df.to_csv('data/data.csv', index=False)
+
+    return 'Success'
+
 def get_model_summary(path):
     """Returns friendlier version of model summary text"""
 
@@ -224,9 +234,10 @@ def get_model_results(predictions_csv):
 
     df['y'] = .5
 
+    df['folder_resized'] = df.apply(lambda row: get_folder_name(row['ResizedPath']), axis=1)
     df['file_name'] = df.apply(lambda row: get_file_name(row['ResizedPath']), axis=1)
 
-    create_URL = lambda row: url_for('static', filename= 'Resized/' + row['file_name'])
+    create_URL = lambda row: url_for('static', filename= row['folder_resized'] + '/' + row['file_name'])
     df['photo_url'] = df.apply(create_URL, axis=1)
 
     babyDF = df.loc[df['Value'] == 'Baby'].reset_index()

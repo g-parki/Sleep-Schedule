@@ -1,0 +1,27 @@
+<nav aria-label="">
+    <ul class="pagination">
+        {% for page in pagination %}
+            {% if loop.first %}
+                <li class="page-item-ajax page-item" value= "/data?page=1&ajax=1">
+                    <a class="page-link" href="#" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                        <span class="sr-only">First</span>
+                    </a>
+                </li>
+                <li class="page-item-ajax page-item" value= "/data?page={{page}}&ajax=1"><a class="page-link" href="#">Prev</a></li>
+            {% elif loop.last %}
+                <li class="page-item-ajax page-item" value= "/data?page={{page}}&ajax=1"><a class="page-link" href="#">Next</a></li>
+                <li class="page-item-ajax page-item" value= "/data?page={{page_length}}&ajax=1">
+                    <a class="page-link" href="#" aria-label="Last">
+                        <span aria-hidden="true">&raquo;</span>
+                        <span class="sr-only">Last</span>
+                    </a>
+                </li>
+            {% elif page == current_page %}
+                <li class="page-item-ajax page-item active" value="/data?page={{page}}&ajax=1"><a class="page-link" href="#">{{page}}</a></li>
+            {% else %}
+                <li class="page-item-ajax page-item" value="/data?page={{page}}&ajax=1"><a class="page-link" href="#">{{page}}</a></li>
+            {% endif %}
+        {%endfor%}
+    </ul>
+</nav>

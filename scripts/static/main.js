@@ -2,6 +2,53 @@
 $(document).ready(function(){
 	$.ajaxSetup({ cache: false });
      // or iPhones don't get fresh data
+    $('#tablecontainer').on('click','.training-correction', function(){
+        $t = $(this);
+
+        file_name = $(this).closest('div').attr('data-filename');
+        value = $(this).attr('value');
+        
+        data_to_send = {
+            file_name: file_name,
+            value: value,
+        };
+
+        $.ajax({
+            url: '/correcttrainingdata',
+            contentType: "application/json",
+            data: JSON.stringify(data_to_send),
+            type: 'POST',
+            success: function(response){
+                console.log(response);
+            },
+            error: function(error){
+                console.log(error);
+            }
+        });
+        
+    });
+
+    $('#pagcontainer').on("click",'.page-item-ajax', function(){
+        $t = $(this);
+        value = $(this).attr('value');
+        
+        date = new Date;
+    
+        $.ajax({
+            url: value,
+            contentType: "application/json",
+            data: JSON.stringify(date),
+            type: 'POST',
+            success: function(response){
+                $('#pagcontainer').html(response['pagination_nav']);
+                $('#tablecontainer').html(response['table']);
+            },
+            error: function(error){
+                console.log(error);
+            }
+        });
+        
+    });
 });
 
 $("#video-feed").on('load', function(){
@@ -18,8 +65,8 @@ $("#video-feed").on('load', function(){
         }
     });
     $('.loader').addClass('d-none');
-    $('.btn-group').removeClass('d-none');
-    $('.btn-group').addClass('d-block');
+    $('.btn-group-live').removeClass('d-none');
+    $('.btn-group-live').addClass('d-block');
     $('.bk').removeClass('d-none');
 });
 
@@ -35,6 +82,23 @@ $(function(){
                 $(".alert-container").prepend("<div class='alert alert-success alert-dismissible fade show' role='alert'><strong>Success! </strong>" + response + "<button type='button' class='close' data-dismiss='alert' aria-label='Close'><span aria-hidden='true'>&times;</span></button></div>");
                 $(".alert").delay(3000).slideUp(200, function() {
                     $(this).removeClass('show');
+                });
+                
+                date = new Date;
+                $.ajax({
+                    url: '/data?page=1&ajax=1',
+                    contentType: "application/json",
+                    data: JSON.stringify(date),
+                    type: 'POST',
+                    success: function(response){
+                        $('#pagcontainer').html(response['pagination_nav']);
+                        $('#tablecontainer').html(response['table']);
+                        $('#graphcontainer').html(response['graph_div']);
+                        $('#scriptcontainer').html(response['graph_script']);
+                    },
+                    error: function(error){
+                        console.log(error);
+                    }
                 });
             },
             error: function(error){
@@ -55,7 +119,7 @@ $(function(){
             value: new_value
         };
         $.ajax({
-            url: '/correct',
+            url: '/correctdatapoint',
             contentType: "application/json",
             data: JSON.stringify(data_to_send),
             type: 'POST',
@@ -78,6 +142,8 @@ $(function(){
     });
 });
 
+
+
 $('button.reading-classification').click(function(){
     $t = $(this);
     value = $(this).attr('value');
@@ -93,7 +159,7 @@ $('button.reading-classification').click(function(){
         data: JSON.stringify(data_to_send),
         type: 'POST',
         success: function(response){
-            $t.closest('div').addClass('d-none');
+            $t.closest('tr').find('div.add-to-training').addClass('d-none');
             $t.closest('tr').find('div.included-in').removeClass('d-none');
             console.log(response);
         },

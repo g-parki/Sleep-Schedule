@@ -130,28 +130,45 @@ def photo():
     photo_name = request.args.get('photo', 1, type=str)
     return render_template('photo.html', file_name = photo_name)
 
-@app.route("/data")
+@app.route("/data", methods=['GET', 'POST'])
 def datapage():
     """Route for viewing multiple photos"""
 
     #Data to feed to page table
-    data, counts, values = datahelpers.get_training_data()
+    data, counts, value_names = datahelpers.get_training_data()
     data_requested_page = request.args.get('page', 1, type=int)
+    is_ajax = request.args.get('ajax', False, type=bool)
     data_page = datahelpers.paginate(data, 12, data_requested_page)
 
-    script, div = graphs.training_data_counts_bar(counts, values)
+    script, div = graphs.training_data_counts_bar(counts, value_names)
 
-    return render_template(
-        'trainingdata.html',
+    table = render_template(
+        'subtemplates/trainingimagestable.html',
         data= data[data_page.get('first_ind'):data_page.get('last_ind')],
-        pagination= data_page.get('pagination_list'),
-        current_page= data_requested_page,
-        page_length= data_page.get('page_length'),
-        graph_script = script,
-        graph_div = div
     )
 
-@app.route('/correct', methods = ['POST'])
+    pagination_nav = render_template(
+        'subtemplates/paginationnav.html',
+        pagination = data_page.get('pagination_list'),
+        current_page= data_requested_page,
+        page_length= data_page.get('page_length'),
+    )
+
+    if is_ajax:
+        return {'table': table,
+            'pagination_nav': pagination_nav,
+            'graph_script': script,
+            'graph_div': div}
+    else:
+        return render_template(
+            'trainingdata.html',
+            graph_script = script,
+            graph_div = div,
+            table = table,
+            pagination_nav = pagination_nav
+        )
+
+@app.route('/correctdatapoint', methods = ['POST'])
 def correct():
     """Updates DataPoint table with new value via ID"""
     if request.method == 'POST':
@@ -164,6 +181,19 @@ def correct():
         print(f'Value: {data["value"]}')
     return 'all good'
 
+@app.route('/correcttrainingdata', methods= ['POST'])
+def correct_training_data():
+    """Updates training data point with new value via file name"""
+    if request.method == 'POST':
+        #Get value from request, and pass it to imagegenerator function via queue
+        data = request.get_json()
+        print(data)
+        response = datahelpers.update_training_csv(
+            filename= data['file_name'],
+            new_value= data['value']
+        )
+
+    return response
 
 @app.route('/readings')
 def readings():

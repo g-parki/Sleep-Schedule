@@ -1,7 +1,8 @@
+from bokeh.models.layouts import Column
 from bokeh.models.tools import HoverTool
 from bokeh.plotting import figure, ColumnDataSource
 from bokeh.embed import components
-from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter, RangeTool
+from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter, RangeTool, LabelSet
 from bokeh.transform import jitter
 from bokeh.layouts import column
 
@@ -180,6 +181,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
         tools= tools,
         toolbar_location= None,
         toolbar_sticky= False,
+        x_axis_location="above",
         x_range=Range1d(start=datetime.now() - timedelta(hours=24),
             end= datetime.now(),
             bounds= (
@@ -193,6 +195,8 @@ def bedtime_graph(sourceDF, fillsourceDF):
     )
     #Main blue dots
     dots = p.circle('date', jitter('value', .05), source= source, size= DOT_SIZE, alpha= DOT_ALPHA, hover_alpha= 0.9)
+    dots.glyph.line_width = 5
+    dots.glyph.line_alpha = 0
     
     #Vertical line hover tool
     #Based on example https://docs.bokeh.org/en/latest/docs/user_guide/styling.html
@@ -209,11 +213,17 @@ def bedtime_graph(sourceDF, fillsourceDF):
         y_axis_type=None,
         tools='',
         toolbar_location= None,
-        plot_height=50,
+        plot_height=75,
         outline_line_color= None,
+        title="Scroll",
+        title_location = 'above',
     )
+    select.title.align = 'right'
+    select.title.text_font_size = '10px'
+    select.title.text_font_style = 'normal'
     range_tool = RangeTool(x_range=p.x_range)
     range_tool.overlay.fill_alpha = 0.5
+
     select.varea(source=fillsource, x='date', y1=0.25, y2='value', alpha=.2)
     select.add_tools(range_tool)
     select.toolbar.active_multi = range_tool
@@ -228,18 +238,20 @@ def bedtime_graph(sourceDF, fillsourceDF):
 
     return components(column(p, select, sizing_mode="stretch_both"))
 
-def training_data_counts_bar(counts, values):
+def training_data_counts_bar(counts, value_names):
     """Returns bar chart of training data counts"""
-
+    source = ColumnDataSource(data=dict(categories= value_names, counts= counts))
     p = figure(
-        x_range= values,
+        x_range= value_names,
         tools='',
         outline_line_color= None,
         plot_height=300,
         toolbar_location= None,
     )
     
-    p.vbar(x= values, top= counts, width= 0.6, alpha= 0.4)
+    p.vbar(x= 'categories', top= 'counts', width= 0.6, alpha= 0.4, source=source)
+    labels = LabelSet(x= 'categories', y= 'counts', text= 'counts', y_offset=1, x_offset=-13, source=source, render_mode= 'css')
+    p.add_layout(labels)
 
     p.xgrid.visible = False
     p.yaxis.minor_tick_line_color = None

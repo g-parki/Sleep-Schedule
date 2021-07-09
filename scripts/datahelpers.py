@@ -176,16 +176,23 @@ def duration_to_string(row):
     returned_string = ''
     hours = row['duration'].components.hours
     minutes = row['duration'].components.minutes + 1*(row['duration'].components.seconds > 29)
+    #Round up to next hour if minutes is 60
+    if minutes == 60:
+        hours += 1
+        minutes = 0
 
     if hours:
         returned_string += (
             str(hours) +
-            f' hour{plural_or_not(hours)}, '
+            f' hour{plural_or_not(hours)}'
         )
-    returned_string += (
-        str(minutes) +
-        f' minute{plural_or_not(minutes)}{so_far(row["end_time_string"])}'
-    )
+        if minutes:
+           returned_string += ', '
+    if minutes:
+        returned_string += (
+            str(minutes) +
+            f' minute{plural_or_not(minutes)}{so_far(row["end_time_string"])}'
+        )
     return returned_string
 
 def save_reading_to_training_data(id, value):

@@ -1,7 +1,7 @@
-//Show classification buttons once video has loaded
 $(document).ready(function(){
 	$.ajaxSetup({ cache: false });
-     // or iPhones don't get fresh data
+    
+    //AJAX correct training data
     $('#tablecontainer').on('click','.training-correction', function(){
         $t = $(this);
 
@@ -24,10 +24,10 @@ $(document).ready(function(){
             error: function(error){
                 console.log(error);
             }
-        });
-        
+        }); 
     });
 
+    //AJAX refresh training data table/pagination when pagination button is pressed
     $('#pagcontainer').on("click",'.page-item-ajax', function(){
         $t = $(this);
         value = $(this).attr('value');
@@ -46,32 +46,10 @@ $(document).ready(function(){
             error: function(error){
                 console.log(error);
             }
-        });
-        
+        });  
     });
-});
 
-$("#video-feed").on('load', function(){
-    var today = new Date();
-    $.ajax({
-        url: '/dummyajax',
-        data: today,
-        type: 'POST',
-        success: function(response){
-            console.log(response);
-        },
-        error: function(error){
-            console.log(error);
-        }
-    });
-    $('.loader').addClass('d-none');
-    $('.btn-group-live').removeClass('d-none');
-    $('.btn-group-live').addClass('d-block');
-    $('.bk').removeClass('d-none');
-});
-
-//Send classification data point to be saved from live stream
-$(function(){
+    //Send classification data point to be saved from live stream
     $('button.live-classification').click(function(){
         value = $(this).attr('value');
         $.ajax({
@@ -93,8 +71,6 @@ $(function(){
                     success: function(response){
                         $('#pagcontainer').html(response['pagination_nav']);
                         $('#tablecontainer').html(response['table']);
-                        $('#graphcontainer').html(response['graph_div']);
-                        $('#scriptcontainer').html(response['graph_script']);
                     },
                     error: function(error){
                         console.log(error);
@@ -106,10 +82,8 @@ $(function(){
             }
         });
     });
-});
 
-//Send classification data point to be saved
-$(function(){
+    //Send classification data point to be saved
     $('button.correction').click(function(){
         $t = $(this);
         new_value = $(this).attr('value')
@@ -140,36 +114,44 @@ $(function(){
             }
         });
     });
-});
 
-
-
-$('button.reading-classification').click(function(){
-    $t = $(this);
-    value = $(this).attr('value');
-    id = $(this).closest('tr').children('td.id-column').text();
-    
-    data_to_send = {
-        id: id,
-        value: value,
-    };
-    $.ajax({
-        url: '/classifyreading',
-        contentType: "application/json",
-        data: JSON.stringify(data_to_send),
-        type: 'POST',
-        success: function(response){
-            $t.closest('tr').find('div.add-to-training').addClass('d-none');
-            $t.closest('tr').find('div.included-in').removeClass('d-none');
-            console.log(response);
-        },
-        error: function(error){
-            console.log(error);
-        }
+    //Classify existing reading into training dataset
+    $('button.reading-classification').click(function(){
+        $t = $(this);
+        value = $(this).attr('value');
+        id = $(this).closest('tr').children('td.id-column').text();
+        
+        data_to_send = {
+            id: id,
+            value: value,
+        };
+        $.ajax({
+            url: '/classifyreading',
+            contentType: "application/json",
+            data: JSON.stringify(data_to_send),
+            type: 'POST',
+            success: function(response){
+                //Hide training buttons, show "Included in training data" div
+                $t.closest('tr').find('div.add-to-training').addClass('d-none');
+                $t.closest('tr').find('div.included-in').removeClass('d-none');
+                console.log(response);
+            },
+            error: function(error){
+                console.log(error);
+            }
+        });  
     });
-    
+
+    //Enable modal live stream on home page
+    $('#playlivetext').click(function(){
+        $('#myModal').modal();
+    });
 });
 
-$('#playlivetext').click(function(){
-    $('#myModal').modal();
+//Hide loader gif and show classification buttons when live stream loads
+$("#video-feed").on('load', function(){
+    $('.loader').addClass('d-none');
+    $('.btn-group-live').removeClass('d-none');
+    $('.btn-group-live').addClass('d-block');
+    $('.bk').removeClass('d-none');
 });

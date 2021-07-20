@@ -73,86 +73,6 @@ def live_prediction_graph(data_source):
 
     return components(p)
 
-def model_performance_graph(baby_df, nobaby_df):
-    """Returns script, div of a plot of a model's predictions for the entire dataset"""
-
-    #HTML tooltip which references the photo_url in the dataframe
-    tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
-    TOOLTIPS = '<div><img src= "@photo_url"><p>@file_name</p></div>'
-
-    baby_src = ColumnDataSource(data= baby_df)
-    nobaby_src = ColumnDataSource(data= nobaby_df)
-    JITTER_RADIUS_X = .11
-    JITTER_RADIUS_Y = 1
-    DOT_SIZE = 10
-    DOT_ALPHA = .1
-    BACK_ALPHA = .05
-
-    p = figure(
-        tooltips= TOOLTIPS,
-        tools=tools,
-        toolbar_location="below",
-        toolbar_sticky=False,
-        active_scroll= tools[1],
-        x_axis_location="above",
-        y_range=Range1d(start=-.02, end=1.08, bounds=(-.25,1.25)),
-        x_range=Range1d(start=-(1+1.5*(JITTER_RADIUS_X)), end=1+1.5*JITTER_RADIUS_X, bounds=(-1.25,1.25))
-    )
-
-    #Shaded background
-    red_polygon = BoxAnnotation(
-        right= 0,
-        fill_color= "crimson",
-        fill_alpha= BACK_ALPHA,
-    )
-    blue_polygon = BoxAnnotation(
-        left= 0,
-        fill_color="dodgerblue",
-        fill_alpha= BACK_ALPHA,
-    )
-    p.add_layout(red_polygon)
-    p.add_layout(blue_polygon)
-
-    #Data points, jittered to separate the dots
-    p.circle(
-        jitter('NoBabyLikeliness', JITTER_RADIUS_X),
-        jitter('y', JITTER_RADIUS_Y),
-        source= nobaby_src,
-        size=DOT_SIZE,
-        color='red', alpha=DOT_ALPHA,
-        legend_label="Photos without baby  "
-    )
-    p.circle(
-        jitter('BabyLikeliness', JITTER_RADIUS_X),
-        jitter('y', JITTER_RADIUS_Y),
-        source= baby_src,
-        size=DOT_SIZE,
-        color='blue', alpha=DOT_ALPHA,
-        legend_label="Photos with baby   "
-    )
-
-    p.sizing_mode = 'scale_both'
-
-    #Axis config
-    p.yaxis.visible = False
-    p.ygrid.visible = False
-    p.xaxis.axis_label = '<- Predicted to Not Have Baby    Predicted to Have Baby ->      '
-    p.xaxis.axis_label_text_font_size = '8pt'
-    p.xaxis.axis_label_text_font_style = 'normal'
-    p.xaxis.major_label_text_font_size = '0pt'  #turn off x-axis tick labels
-    p.yaxis.major_label_text_font_size = '0pt' #turn off y-axid tick labels
-    
-    #Legend config
-    p.legend.location = "top_center"
-    p.legend.click_policy="hide"
-    p.legend.label_text_font_size = '8pt'
-    p.legend.label_text_font_style = 'normal'
-    p.legend.orientation='vertical'
-    p.legend.glyph_height= 20
-    p.legend.background_fill_alpha = 0.7
-    p.legend.border_line_width = 1
-
-    return components(p)
 
 def bedtime_graph(sourceDF, fillsourceDF):
     """Returns script, div of a plot of automatic readings over last 24 hours"""
@@ -165,7 +85,7 @@ def bedtime_graph(sourceDF, fillsourceDF):
     source = ColumnDataSource(
         data= dict(
             date= convert_timezone_np(sourceDF.index),
-            value= 0.5*sourceDF['nap_time']+0.25,
+            value= 0.5*(sourceDF.apply(lambda row: row['value']=='Baby', axis=1))+0.25,
             photo_url= sourceDF['photo_url'],
             file_name= sourceDF['file_name']
         )
@@ -173,7 +93,8 @@ def bedtime_graph(sourceDF, fillsourceDF):
 
     fillsource = ColumnDataSource(
         data= dict(date= convert_timezone_np(fillsourceDF.index),
-        value= .5*fillsourceDF['nap_time']+.25)
+            value= 0.5*(fillsourceDF.apply(lambda row: row['value']=='Baby', axis=1))+0.25,
+        )
     )
 
     p = figure(
@@ -256,5 +177,105 @@ def training_data_counts_bar(counts, value_names):
     p.xgrid.visible = False
     p.yaxis.minor_tick_line_color = None
     p.sizing_mode = 'stretch_both'
+
+    return components(p)
+
+
+def model_performance_graph_quads(baby_df, nobaby_df, dims):
+    """Returns script, div of a plot of a model's predictions for the entire dataset"""
+
+    #HTML tooltip which references the photo_url in the dataframe
+    tools = [PanTool(), WheelZoomTool(maintain_focus= False), ResetTool()]
+    TOOLTIPS = '<div><img src= "@photo_url"><p>@file_name</p></div>'
+
+    baby_src = ColumnDataSource(data= baby_df)
+    nobaby_src = ColumnDataSource(data= nobaby_df)
+    JITTER_RADIUS_X = .97
+    JITTER_RADIUS_Y = .47
+    DOT_SIZE = 10
+    DOT_ALPHA = .1
+    BACK_ALPHA = .05
+
+    p = figure(
+        tooltips= TOOLTIPS,
+        tools=tools,
+        toolbar_location=None,
+        toolbar_sticky=False,
+        active_scroll= tools[1],
+        x_axis_location="above",
+        x_range=Range1d(start=dims.get('x_start'), end=dims.get('x_end'), bounds=(dims.get('x_start'),dims.get('x_end'))),
+        y_range=Range1d(start=dims.get('y_start'), end=dims.get('y_end'), bounds=(dims.get('y_start'),dims.get('y_end'))),
+        plot_height=200,
+    )
+
+    #Shaded background
+    red_polygon = BoxAnnotation(
+        right= 0,
+        fill_color= "crimson",
+        fill_alpha= BACK_ALPHA,
+    )
+    blue_polygon = BoxAnnotation(
+        left= 0,
+        fill_color="dodgerblue",
+        fill_alpha= BACK_ALPHA,
+    )
+    p.add_layout(red_polygon)
+    p.add_layout(blue_polygon)
+
+    #Data points, jittered to separate the dots
+    red_dots = p.circle(
+        jitter('NoBabyLikeliness', JITTER_RADIUS_X),
+        jitter('y', JITTER_RADIUS_Y),
+        source= nobaby_src,
+        size=DOT_SIZE,
+        color='red', alpha=DOT_ALPHA,
+        #legend_label="Photos without baby  ",
+        #legend=False
+    )
+    blue_dots = p.circle(
+        jitter('BabyLikeliness', JITTER_RADIUS_X),
+        jitter('y', JITTER_RADIUS_Y),
+        source= baby_src,
+        size=DOT_SIZE,
+        color='blue', alpha=DOT_ALPHA,
+        #legend_label="Photos with baby   ",
+        #legend=False
+    )
+
+    red_dots.glyph.line_width = 5
+    red_dots.glyph.line_alpha = 0
+    blue_dots.glyph.line_width = 5
+    blue_dots.glyph.line_alpha = 0
+
+    p.line([-1.5, 1.5], [.5, .5], line_width=1, color='dimgray')#horizontal
+    p.line([0, 0], [-1.5, 1.5], line_width=1, color='dimgray')#vertical
+
+    p.sizing_mode = 'stretch_width'
+
+    #Axis config
+    p.yaxis.visible = False
+    p.ygrid.visible = False
+    p.xaxis.visible = False
+    p.xgrid.visible = False
+    p.xaxis.axis_label_text_font_size = '8pt'
+    p.xaxis.axis_label_text_font_style = 'normal'
+    p.xaxis.major_label_text_font_size = '0pt'  #turn off x-axis tick labels
+    p.yaxis.major_label_text_font_size = '0pt' #turn off y-axid tick labels
+
+    p.min_border_left = 0
+    p.min_border_right = 0
+    p.min_border_top = 0
+    p.min_border_bottom = 0
+
+    #Legend config
+    # p.legend.location = None
+    # p.legend.click_policy="hide"
+    # p.legend.label_text_font_size = '8pt'
+    # p.legend.label_text_font_style = 'normal'
+    # p.legend.orientation='vertical'
+    # p.legend.glyph_height= 20
+    # p.legend.background_fill_alpha = 0.7
+    # p.legend.border_line_width = 1
+
 
     return components(p)

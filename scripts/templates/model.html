@@ -2,11 +2,12 @@
 
 {% block headscript %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bokeh/2.3.1/bokeh.min.js"></script>
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='style.css') }}">
 {% endblock headscript %}
         
 
 {% block content %}
-    <h2>Model {{model | safe}}</h2>
+    <h3>Model {{model | safe}}</h3>
         <div class='w-100 border-bottom'>
             <p>Accuracy: {{accuracy}}</p>
             <div class= "row justify-content-between">
@@ -27,34 +28,42 @@
             </div>
             <div class= "row"><p></p></div>
         </div>
-    <div class='h-25'>
-        <div class='row'>
-            <div class='col'>
-                <p></p>
-            </div>
-        </div>
-        <div class='row'>
-            <div class='col'>
-                {{graph_div | safe}}
-            </div>
-        </div>
-        <hr>
-        <h3>Structure</h3><br>
-        <div class= 'row'>
-            <div class= 'col'>
-                <p>
-                <small>
-                    {% for line in summary%}
-                        {{line}}<br>
-                    {% endfor%}
-                </small>
-                </p>
-            </div>
-        </div>
-    </div>
 
-    
-    {{graph_script | safe}}
+        <div class="container">
+            {%for row in components_list | batch(2)%}
+            <div class="row">
+                {%for item in row%}
+                <div class="col-6 no-padding graph-container">
+                    {{item.div | safe}}
+                    <div class="centered text-center">
+                        <h1 class="text-muted" >{{item.label}}</h1>
+                        <h5 class="text-muted" >{{item.category}}</h5>
+                    </div>
+                </div>   
+                {%endfor%}
+            </div>
+            {%endfor%}
+        </div>
+
+        <h3 class="top-buffer">Structure</h3><br>
+        <table class="table table-sm">
+            {%for layer in structure%}
+                <tr scope='row'>
+                    <td colspan="3"><h5>{{layer.name}}</h5></td>
+                </tr>
+                {%for detail in layer.details%}
+                <tr>
+                    <td></td>
+                    <td>{{detail.field_name}}</td>
+                    <td>{{detail.value}}</td>
+                </tr>
+                {%endfor%}
+            {%endfor%}
+        </table>
+
+    {%for item in components_list%}
+        {{item.script | safe}}
+    {%endfor%}
 {% endblock content %}
 
 {% block scripts%}

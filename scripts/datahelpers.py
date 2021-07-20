@@ -1,11 +1,12 @@
 import sys
 from pathlib import Path
-
+import json
 from numpy.core.fromnumeric import resize
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
 from datetime import datetime, date, timedelta
 from scripts import datamodels, db
+from scripts.datamodels import DataPoint
 import pandas as pd
 import numpy as np
 import pytz
@@ -31,11 +32,7 @@ get_val_string = lambda row: TRAININGDATA_VALUE_DICT.get(str(row['Value']))
 def get_all_nap_data(with_upsample = False):
     """Returns dataframe of all bedtime readings, and optionally an upsampled dataframe"""
 
-    df = get_readings(as_df = True, with_values = False)
-
-    #Create boolean nap time column, synonymous with data with baby in it. Upsample to every 1 minute
-    df['nap_time'] = df.apply(lambda row: int(row.value == 'Baby'), axis=1)
-    df['file_name'] = df.apply(lambda row: get_file_name(row['image_resized_path']), axis= 1)
+    df = get_readings(as_df = True, with_rendered_values = False)
 
     create_URL = lambda row: url_for('static', filename= 'ReadingImagesResized/' + row['file_name'])
     df['photo_url'] = df.apply(create_URL, axis=1)
@@ -52,8 +49,8 @@ def aggregate_nap_data(df):
 
     #Build Recent Naps Table
     #Determine edge data points by comparing 'nap time' from one record to 'nap time' from the next
-    df['change_event'] = df['nap_time'] != df['nap_time'].shift(1)
-    df = df.dropna(subset=['nap_time'])
+    df['change_event'] = df['value'] != df['value'].shift(1)
+    df = df.dropna(subset=['value'])
 
     #Calculate start and end time for each nap. Also get string representations
     napsDF = df.loc[df['change_event'] == True]
@@ -76,8 +73,8 @@ def aggregate_nap_data(df):
     )
 
     #Filter for spans labeled as a nap, and remove unneccesary columns
-    napsDF = napsDF.loc[napsDF['nap_time'] == True]
-    napsDF = napsDF.drop(['value', 'baby_reading', 'empty_reading', 'nap_time', 'change_event'], axis=1)
+    napsDF = napsDF.loc[napsDF['value'] == 'Baby']
+    napsDF = napsDF.drop(['baby_reading', 'empty_reading', 'change_event'], axis=1)
 
 
     get_duration = lambda row: row['end_time'] - row['start_time']
@@ -88,7 +85,11 @@ def aggregate_nap_data(df):
         axis=1
     )
 
-    napsDF['duration_string'] = napsDF.apply(duration_to_string, axis=1)
+    napsDF['duration_string'] = napsDF.apply(lambda row: duration_to_string(
+                                        time_delt=row['duration'],
+                                        ongoing= row['end_time_string']=='Now'
+                                    ),
+                                axis=1)
 
     return df_to_dict_list(napsDF, reverse= True)
 
@@ -107,16 +108,17 @@ def get_training_data():
 
     return df_to_dict_list(df), counts, values
 
-def get_readings(as_df = False, with_values = True):
+def get_readings(as_df = False, with_rendered_values = True):
+    """Queries all readings in last 7 days, adds file names & time column, returns dataframe or dict list"""
 
-    query = db.session.query(datamodels.DataPoint)
+    query = db.session.query(DataPoint).filter(DataPoint.timestamp >= datetime.now()-timedelta(days=7))
     df = pd.read_sql_query(query.statement, db.session.bind, index_col='timestamp')
     df['file_name'] = df.apply(lambda row: get_file_name(row['image_orig_path']), axis=1)
 
     start_times = df.index.values
     df.insert(0, column= "start_time", value= convert_timezone_np(start_times))
     
-    if with_values:
+    if with_rendered_values:
         for field in ['baby_reading', 'empty_reading']:
             df[field] = df.apply(lambda row: round_number_for_display(row[field]), axis=1)
     if as_df:
@@ -126,19 +128,21 @@ def get_readings(as_df = False, with_values = True):
 
 
 def get_bedtime_data(start_id, end_id):
-    """Returns datalist, beginning time string, and ending time string
-    of photos between a start id and an end id"""
+    """Returns datalist, beginning time string, ending time string,
+    and duration string of photos between a start id and an end id"""
 
     if end_id == -1:
         #Get ID of most recent datapoint
-        end_id = datamodels.DataPoint.query.order_by(-datamodels.DataPoint.id).first().id
+        end_id = DataPoint.query.order_by(-DataPoint.id).first().id
         #Set string to represent that the current bed time hasn't ended
         time_string_last = 'Now'
+        end_time = datetime.now()
     else:
         time_string_last = ''
+        end_time = ''
 
-    query = db.session.query(datamodels.DataPoint).filter(
-        datamodels.DataPoint.id.between(start_id, end_id)
+    query = db.session.query(DataPoint).filter(
+        DataPoint.id.between(start_id, end_id)
     )
 
     df = pd.read_sql_query(query.statement, db.session.bind, index_col='timestamp')
@@ -147,13 +151,19 @@ def get_bedtime_data(start_id, end_id):
     df['time_string'] = df.apply(lambda row: time_string(row['time']), axis=1)
     df['file_name'] = df.apply(lambda row: get_file_name(row['image_resized_path']), axis=1)
 
-    date_string = today_or_yesterday(df.iloc[0]['time'])
-    time_string_first = df.iloc[0]['time_string']
+    start_time = df.iloc[0]['time']
     #Check if time_string_last has already been set to "Now"
     if not time_string_last == 'Now':
         time_string_last = df.iloc[-1]['time_string']
+        end_time = df.iloc[-1]['time']
 
-    return df_to_dict_list(df), date_string, time_string_first, time_string_last
+    duration = end_time - start_time
+    duration_string = duration_to_string(time_delt=duration, ongoing=time_string_last=='Now')
+
+    date_string = today_or_yesterday(start_time)
+    time_string_first = df.iloc[0]['time_string']
+    
+    return df_to_dict_list(df), date_string, time_string_first, time_string_last, duration_string
 
 def df_to_dict_list(df, reverse= True):
     """Returns data as list of dictionaries for each item in a dataframe"""
@@ -165,17 +175,17 @@ def df_to_dict_list(df, reverse= True):
         data.reverse()
     return data
 
-def duration_to_string(row):
+def duration_to_string(time_delt, ongoing=False):
     """Returns friendly string version of duration"""
     #0:51 -> 51 minutes
     #1:51 -> 1 hour 51 minutes
     #2:51 -> 2 hours 51 mintues
     plural_or_not = lambda item: '' if item == 1 else 's'
-    so_far = lambda now: '' if not now == 'Now' else ' so far'
+    so_far = lambda ongoing: ' so far' if ongoing else ''
     
     returned_string = ''
-    hours = row['duration'].components.hours
-    minutes = row['duration'].components.minutes + 1*(row['duration'].components.seconds > 29)
+    hours = time_delt.components.hours
+    minutes = time_delt.components.minutes + 1*(time_delt.components.seconds > 29)
     #Round up to next hour if minutes is 60
     if minutes == 60:
         hours += 1
@@ -191,13 +201,13 @@ def duration_to_string(row):
     if minutes:
         returned_string += (
             str(minutes) +
-            f' minute{plural_or_not(minutes)}{so_far(row["end_time_string"])}'
+            f' minute{plural_or_not(minutes)}{so_far(ongoing)}'
         )
     return returned_string
 
 def save_reading_to_training_data(id, value):
     """Saves existing database reading to training data CSV"""
-    data = datamodels.DataPoint.query.filter(datamodels.DataPoint.id == id)[0]
+    data = DataPoint.query.filter(DataPoint.id == id)[0]
     original_path = data.image_orig_path
     resized_path = data.image_resized_path
 
@@ -219,19 +229,61 @@ def update_training_csv(filename, new_value):
 
     return 'Success'
 
-def get_model_summary(path):
-    """Returns friendlier version of model summary text"""
+def model_config(path):
+    """Loads JSON config file and returns applicable structure/metadata"""
+    
+    CLASS_FIELDS = { #Format 'class_name': [list of applicable fields]
+        'InputLayer': ['batch_input_shape', 'dtype'],
+        'Conv2D': ['batch_input_shape', 'filters', 'kernel_size', 'strides', 'activation'],
+        'Activation': ['activation'],
+        'MaxPooling2D': ['pool_size', 'strides'],
+        'Dropout': ['rate'],
+        'Flatten': [''],
+        'Dense': ['units', 'activation']
+    }
 
+    FIELD_ALIASES = { #Format 'class_name': Preferred rendering of class name
+        'batch_input_shape': 'Input Shape',
+        'dtype': 'Data Type',
+        'filters': 'Filters',
+        'kernel_size': 'Kernel Size',
+        'strides': 'Strides',
+        'activation': 'Activation',
+        'pool_size': 'Pool Size',
+        'rate': 'Rate',
+        'units': 'Units',
+    }
+    
     with open(path, 'r') as f:
-        lines = f.readlines()
-    shitty_strings = ['====', '____']
-    stringlist = [line[:-2] for line in lines]
-    stringlist = [
-        line.capitalize() for line in stringlist 
-        if shitty_strings[0] not in line 
-        and shitty_strings[1] not in line
-    ]
-    return stringlist
+        config = json.load(f)
+
+    structure = []
+
+    for layer in config['layers']:
+        name = layer['class_name']
+        details = []
+        #First see if layer class has specified list of fields of interest
+        if name in CLASS_FIELDS:
+            fields = CLASS_FIELDS[name]
+            #Then print the fields if the layer has them
+            for field in fields:
+                if field in layer['config']:
+                    value = layer['config'][field]
+                else:
+                    #Skip field if the layer doesn't have it.
+                    # e.g. batch_input_shape for second Conv2D
+                    continue
+                if field in FIELD_ALIASES:
+                    alias = FIELD_ALIASES[field]
+                else:
+                    alias = field
+                details.append({'field_name': alias, 'value': value})
+                #print(f'--{alias}: {value}')
+        else:
+            continue
+        structure.append({'name': name, 'details': details})
+
+    return structure
 
 def get_model_results(predictions_csv):
     
@@ -248,14 +300,30 @@ def get_model_results(predictions_csv):
     df['photo_url'] = df.apply(create_URL, axis=1)
 
     babyDF = df.loc[df['Value'] == 'Baby'].reset_index()
-    baby_likeliness = lambda row: row['LikelyBaby'] - row['LikelyEmpty']
-    babyDF['BabyLikeliness'] = babyDF.apply(baby_likeliness, axis=1)
+    baby_likeliness_binary = lambda row: 1*((row['LikelyBaby'] - row['LikelyEmpty'])>0)-.5
+    babyDF['BabyLikeliness'] = babyDF.apply(baby_likeliness_binary, axis=1)
+    babyDF['y'] = .25
 
     nobabyDF = df.loc[df['Value'] == 'No Baby'].reset_index()
-    nobaby_likeliness = lambda row: -1*(row['LikelyEmpty'] - row['LikelyBaby'])
-    nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(nobaby_likeliness, axis=1)
+    nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(baby_likeliness_binary, axis=1)
+    nobabyDF['y'] = .75
+
+    def get_correct_incorrect_counts(df):
+        """Returns counts of data from dataframe previously labelled with 'incorrect' column"""
+        incorrect = len(df.loc[df['Incorrect'] == 1])
+        correct = len(df) - incorrect
+        return incorrect, correct
+
+    baby_incorrect, baby_correct = get_correct_incorrect_counts(babyDF)
+    empty_incorrect, empty_correct = get_correct_incorrect_counts(nobabyDF)
+
+    label_dict = {'baby_incorrect': str(baby_incorrect),
+        'baby_correct': str(baby_correct),
+        'empty_incorrect': str(empty_incorrect),
+        'empty_correct': str(empty_correct)
+    }
     
-    return babyDF, nobabyDF, accuracy
+    return babyDF, nobabyDF, accuracy, label_dict
 
 def convert_timezone(timestamp):
     ts = pd.to_datetime(timestamp)

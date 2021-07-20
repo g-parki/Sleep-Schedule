@@ -1,3 +1,4 @@
+from bokeh.embed.standalone import components
 from flask import render_template, request, url_for, Response, stream_with_context, jsonify
 from bokeh.models.sources import AjaxDataSource
 from scripts import streamer, app, graphs, datamodels, datahelpers
@@ -50,14 +51,15 @@ def refresh_bedtimes():
 def bedtime():
     start_id = request.args.get('start', 1, type=int)
     end_id = request.args.get('end', 1, type=int)
-    data, date_string, time_string_first, time_string_last = datahelpers.get_bedtime_data(start_id, end_id)
+    data, date_string, time_string_first, time_string_last, duration_string = datahelpers.get_bedtime_data(start_id, end_id)
     
     return render_template(
         'bedtime.html',
         data = data,
         date_string = date_string,
         start_time_string = time_string_first,
-        end_time_string = time_string_last
+        end_time_string = time_string_last,
+        duration = duration_string
     )
 
 @app.route('/dummyajax', methods= ['POST'])
@@ -236,8 +238,9 @@ def model(modelname):
     model_folder_path = os.path.join(os.getcwd(), 'scripts', 'static', 'modelpredictions', modelname)
     model_predictions_csv = os.path.join(model_folder_path, 'predictions.csv')
     model_summ_path = os.path.join(model_folder_path, 'summary.txt')
+    model_config_path = os.path.join(model_folder_path, 'config.json')
 
-    summary = datahelpers.get_model_summary(model_summ_path)
+    structure = datahelpers.model_config(model_config_path)
     
     #Determine values for previous model, next model buttons
     all_models = os.listdir('models')
@@ -253,23 +256,44 @@ def model(modelname):
         next_model = all_models[cur_index + 1]
         prev_model = all_models[cur_index - 1]
 
-    model_strings = os.path.join(model_folder_path, 'strings.csv') #Not used currently
-
     #Load data from predictions, create URLs for each image
-    babyDF, nobabyDF, accuracy = datahelpers.get_model_results(model_predictions_csv)
+    babyDF, nobabyDF, accuracy, label_dict = datahelpers.get_model_results(model_predictions_csv)
 
-    #Get graph components
-    script, div = graphs.model_performance_graph(babyDF, nobabyDF)
+    #Use standalone plots for each quadrant to allow CSS-centered overlay labels in the HTML template
+    quadrant_dims = [
+        {'x_start':-1, 'x_end':0,
+            'y_start':.5, 'y_end':1,
+            'label': label_dict.get('empty_correct'),
+            'category': 'True Negative'
+        },#quad2
+        {'x_start':0, 'x_end':1,
+            'y_start':.5, 'y_end':1,
+            'label': label_dict.get('empty_incorrect'),
+            'category': 'False Positive'
+        },#quad1
+        {'x_start':-1, 'x_end':0,
+            'y_start':0, 'y_end':.5,
+            'label': label_dict.get('baby_incorrect'),
+            'category': 'False Negative'
+        },#quad3
+        {'x_start':0, 'x_end':1,
+            'y_start':0, 'y_end':.5,
+            'label': label_dict.get('baby_correct'),
+            'category': 'True Positive'
+        },#quad4
+    ]
+    #Append script and div to each quadrant dictionary
+    for quad in quadrant_dims:
+        quad['script'], quad['div'] = graphs.model_performance_graph_quads(babyDF, nobabyDF, quad)
 
     return render_template(
         'model.html',
         model= modelname,
-        graph_script = script,
-        graph_div = div,
         accuracy= accuracy,
         next = next_model,
         previous = prev_model,
-        summary= summary
+        components_list= quadrant_dims,
+        structure= structure
     )
 
 

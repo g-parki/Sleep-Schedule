@@ -4,34 +4,32 @@
     <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static', filename='style.css') }}">
 {% endblock headscript %}
 
-{% block content %}
-    <div class="container-fluid">  
-        <div class= "row justify-content-center table-responsive">
-            <h3>Bedtime</h3>
-            <h5>{{date_string}}<small class="text-muted"> {{start_time_string}} thru {{end_time_string}}</small></h5>
-            <table class="table">
-                <!--thead class=''>
+{% block content %}  
+    <div class= "row justify-content-center table-responsive">
+        <h3>Bedtime<small class="text-muted"> {{date_string}} {{start_time_string}} thru {{end_time_string}}</small></h3>
+        <h5>{{duration}}</h5>
+        <table class="table">
+            <!--thead class=''>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Details</th>
+                </tr>
+            </thead-->
+            <tbody>
+                {%for item in data%}
                     <tr>
-                        <th scope="col">Date</th>
-                        <th scope="col">Details</th>
+                        <td scope="row" >
+                            <h4 class= "font-weight-light">{{item.time_string}}</h4>
+                        </td>
+                        <td scope="row">
+                            <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
+                                <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
+                            </a>    
+                        </td>
                     </tr>
-                </thead-->
-                <tbody>
-                    {%for item in data%}
-                        <tr>
-                            <td scope="row" >
-                                <p class= "font-weight-normal">{{item.time_string}}</p>
-                            </td>
-                            <td scope="row">
-                                <a class="reading-img" href="{{url_for('static', filename= 'ReadingImagesOriginals/' + item.file_name)}}">
-                                    <img src="{{url_for('static', filename= 'ReadingImagesResized/' + item.file_name)}}">
-                                </a>    
-                            </td>
-                        </tr>
-                       {%endfor%}
-                </tbody>
-            </table>
-        </div>
+                    {%endfor%}
+            </tbody>
+        </table>
     </div>
     {{graph_script | safe}}
 {% endblock content %}

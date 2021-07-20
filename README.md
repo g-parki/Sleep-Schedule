@@ -1,4 +1,4 @@
-# Machine Learning Baby Monitor Sleep Schedule
+# Machine Learning Sleep Schedule Tracker
 ### What is it?
 Convolutional neural network web app trained to track our infant’s sleep schedule using our Google Nest camera.
 Features include:

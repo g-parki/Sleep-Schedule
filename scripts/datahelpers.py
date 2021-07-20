@@ -299,12 +299,12 @@ def get_model_results(predictions_csv):
     create_URL = lambda row: url_for('static', filename= row['folder_resized'] + '/' + row['file_name'])
     df['photo_url'] = df.apply(create_URL, axis=1)
 
-    babyDF = df.loc[df['Value'] == 'Baby'].reset_index()
+    babyDF = df.loc[(df['Value'] == 'Baby') | (df['Value'] == 1.0) | (df['Value'] == 2.0)].reset_index()
     baby_likeliness_binary = lambda row: 1*((row['LikelyBaby'] - row['LikelyEmpty'])>0)-.5
     babyDF['BabyLikeliness'] = babyDF.apply(baby_likeliness_binary, axis=1)
     babyDF['y'] = .25
 
-    nobabyDF = df.loc[df['Value'] == 'No Baby'].reset_index()
+    nobabyDF = df.loc[(df['Value'] == 'No Baby') | (df['Value'] == 0.0)].reset_index()
     nobabyDF['NoBabyLikeliness'] = nobabyDF.apply(baby_likeliness_binary, axis=1)
     nobabyDF['y'] = .75
 

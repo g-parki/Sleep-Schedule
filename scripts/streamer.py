@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import os
 import csv
 import pytz
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' #Hide tensorflow import printouts
 import tensorflow as tf
 from threading import Thread, Event, active_count, enumerate, currentThread
 from queue import Queue
@@ -19,8 +20,7 @@ try:
     for gpu in tf_gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 except:
-    pass 
-
+    pass
 
 def get_recent_model():
     """Returns path of highest named model in 'models' directory"""

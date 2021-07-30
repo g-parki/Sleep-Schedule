@@ -5,10 +5,11 @@ from datetime import datetime, timedelta
 import os
 import csv
 import pytz
+import tensorflow as tf
 from threading import Thread, Event, active_count, enumerate, currentThread
 from queue import Queue
 from tensorflow.keras.models import load_model
-import tensorflow as tf
+
 global predictions_list
 predictions_list = [0,0,0,0]
 

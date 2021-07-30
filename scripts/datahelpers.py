@@ -1,8 +1,8 @@
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(sys.path[0]).parent))
 import json
 from numpy.core.fromnumeric import resize
-sys.path.insert(0, str(Path(sys.path[0]).parent))
 
 from datetime import datetime, date, timedelta
 from scripts import datamodels, db
@@ -13,6 +13,14 @@ import pytz
 from flask import url_for
 import csv
 
+# Decorator to hide pandas warning for assigning a column on copy/view
+def suppress_pandas_warning(func):
+    def wrapper_suppress_pandas(*args, **kwargs):
+        pd.options.mode.chained_assignment = None
+        returns = func(*args, **kwargs)
+        pd.options.mode.chained_assignment = 'warn'
+        return returns
+    return wrapper_suppress_pandas
 
 #Shared constants
 TRAININGDATA_VALUE_DICT = {'0.0': 'Empty', '1.0': 'Awake', '2.0': 'Asleep'}
@@ -43,7 +51,7 @@ def get_all_nap_data(with_upsample = False):
     else:
         return df
 
-
+@suppress_pandas_warning
 def aggregate_nap_data(df):
     """Return dictionary list of bedtimes with friendly rendered text"""
 
@@ -80,8 +88,7 @@ def aggregate_nap_data(df):
     get_duration = lambda row: row['end_time'] - row['start_time']
     napsDF['duration'] = napsDF.apply(
         #Calculate duration from dataframe if end_time exists
-        lambda row: get_duration(row) if not is_NaT(row['end_time'])
-        else datetime.now() - row['start_time'], #Sleep is ongoing, calculate current duration
+        lambda row: get_duration(row) if not is_NaT(row['end_time']) else (datetime.now() - row['start_time']), #Sleep is ongoing, calculate current duration
         axis=1
     )
 

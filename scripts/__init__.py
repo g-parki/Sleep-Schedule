@@ -1,6 +1,8 @@
 #Ensure project folder is added to path
-import os, sys
+import os
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
 #Initialize database and app

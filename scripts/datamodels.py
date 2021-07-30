@@ -2,8 +2,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
-from scripts import db
 from datetime import datetime
+from scripts import db
+
 
 class DataPoint(db.Model):
     """Model class for a classified image with timestamp"""

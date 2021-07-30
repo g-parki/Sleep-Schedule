@@ -11,3 +11,4 @@ server.py
 *.pyc
 *data_exploration_notebook*
 *napsnotebook*
+*virtualenv*

@@ -3,12 +3,13 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(sys.path[0]).parent))
 
-#Normal imports
-from streamer import Streamer
 from cv2 import cv2
+from streamer import Streamer
+
 #need to ensure database imports follow same convention as other scripts
 #https://stackoverflow.com/questions/37908767/table-roles-users-is-already-defined-for-this-metadata-instance/49490203
 from scripts import datamodels
+
 
 def reading_image_saver(frame_obj):
     """Saves MyFrame object to readings originals & resized directories"""

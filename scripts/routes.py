@@ -1,11 +1,13 @@
-from bokeh.embed.standalone import components
-from flask import render_template, request, url_for, Response, stream_with_context, jsonify
-from bokeh.models.sources import AjaxDataSource
-from scripts import streamer, app, graphs, datamodels, datahelpers
-from scripts import datahelpers
 import os
-from threading import Event
 from queue import Queue
+from threading import Event
+
+from bokeh.embed.standalone import components
+from bokeh.models.sources import AjaxDataSource
+from flask import (Response, jsonify, render_template, request,
+                   stream_with_context, url_for)
+
+from scripts import app, datahelpers, datamodels, graphs, streamer
 
 #Queues and events to allow live classification of images from user
 classification_q = Queue()

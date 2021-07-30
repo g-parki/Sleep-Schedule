@@ -1,14 +1,17 @@
-from bokeh.models.layouts import Column
-from bokeh.models.tools import HoverTool
-from bokeh.plotting import figure, ColumnDataSource
-from bokeh.embed import components
-from bokeh.models import BoxAnnotation, Range1d, PanTool, WheelZoomTool, ResetTool, Label, DatetimeTickFormatter, RangeTool, LabelSet
-from bokeh.transform import jitter
-from bokeh.layouts import column
-
 from datetime import datetime, timedelta
 
+from bokeh.embed import components
+from bokeh.layouts import column
+from bokeh.models import (BoxAnnotation, DatetimeTickFormatter, Label,
+                          LabelSet, PanTool, Range1d, RangeTool, ResetTool,
+                          WheelZoomTool)
+from bokeh.models.layouts import Column
+from bokeh.models.tools import HoverTool
+from bokeh.plotting import ColumnDataSource, figure
+from bokeh.transform import jitter
+
 from scripts.datahelpers import convert_timezone_np
+
 
 def live_prediction_graph(data_source):
     """Returns script, div of plot for a live readout of the neural network inference"""

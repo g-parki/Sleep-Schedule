@@ -115,11 +115,19 @@ def get_training_data():
 
     return df_to_dict_list(df), counts, values
 
-def get_readings(as_df = False, with_rendered_values = True):
+def get_readings(as_df = False, with_rendered_values = True, date_based = True):
     """Queries all readings in last 7 days, adds file names & time column, returns dataframe or dict list"""
 
-    query = db.session.query(DataPoint).filter(DataPoint.timestamp >= datetime.now()-timedelta(days=7))
+    if date_based:
+        query = db.session.query(DataPoint).filter(DataPoint.timestamp >= datetime.now()-timedelta(days=7))
+        reverse = False
+    else:
+        query = db.session.query(DataPoint).order_by(DataPoint.timestamp.desc()).limit(100)
+        reverse = True
     df = pd.read_sql_query(query.statement, db.session.bind, index_col='timestamp')
+
+    if reverse:
+        df = df.iloc[::-1]
     df['file_name'] = df.apply(lambda row: get_file_name(row['image_orig_path']), axis=1)
 
     start_times = df.index.values

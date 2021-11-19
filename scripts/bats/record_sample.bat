@@ -1,3 +1,3 @@
 @echo off
 cd  "C:\Users\parki\Documents\GitHub\Python-Practice\Sleep_Schedule"
-python38 scripts/sampler.py
+C:\Users\parki\Documents\GitHub\Python-Practice\Sleep_Schedule\virtualenv\Scripts\python.exe scripts/sampler.py

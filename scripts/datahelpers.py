@@ -5,7 +5,7 @@ import json
 from numpy.core.fromnumeric import resize
 
 from datetime import datetime, date, timedelta
-from scripts import datamodels, db
+from scripts import datamodels, db, demo_date
 from scripts.datamodels import DataPoint
 import pandas as pd
 import numpy as np
@@ -69,7 +69,7 @@ def aggregate_nap_data(df):
     #Get ID# of datapoint for end of get_bedtime_date
     #Shift ID's by one. Fill na's with -1. This indicates bedtime is ongoing.
     #Convert to int to avoid decimals in URL args
-    napsDF['end_id'] = napsDF['id'].shift(-1).fillna(-1)
+    napsDF['end_id'] = napsDF['id'].shift(-1).fillna(1152)
     napsDF['end_id'] = napsDF['end_id'].astype('int')
 
     end_times = napsDF['start_time'].shift(-1)
@@ -88,7 +88,7 @@ def aggregate_nap_data(df):
     get_duration = lambda row: row['end_time'] - row['start_time']
     napsDF['duration'] = napsDF.apply(
         #Calculate duration from dataframe if end_time exists
-        lambda row: get_duration(row) if not is_NaT(row['end_time']) else (datetime.now() - row['start_time']), #Sleep is ongoing, calculate current duration
+        lambda row: get_duration(row) if not is_NaT(row['end_time']) else (convert_timezone(demo_date) - row['start_time']), #Sleep is ongoing, calculate current duration
         axis=1
     )
 
@@ -119,7 +119,8 @@ def get_readings(as_df = False, with_rendered_values = True, date_based = True):
     """Queries all readings in last 7 days, adds file names & time column, returns dataframe or dict list"""
 
     if date_based:
-        query = db.session.query(DataPoint).filter(DataPoint.timestamp >= datetime.now()-timedelta(days=7))
+        query = db.session.query(DataPoint).filter(DataPoint.timestamp >= demo_date - timedelta(days=7))\
+            .filter(DataPoint.timestamp <= demo_date)
         reverse = False
     else:
         query = db.session.query(DataPoint).order_by(DataPoint.timestamp.desc()).limit(100)
@@ -151,7 +152,7 @@ def get_bedtime_data(start_id, end_id):
         end_id = DataPoint.query.order_by(-DataPoint.id).first().id
         #Set string to represent that the current bed time hasn't ended
         time_string_last = 'Now'
-        end_time = datetime.now()
+        end_time = demo_date
     else:
         time_string_last = ''
         end_time = ''
@@ -351,9 +352,9 @@ convert_timezone_np = np.vectorize(convert_timezone)
 def today_or_yesterday(date_obj):
     """Returns friendly string version of a date"""
     obj_date_string = date_string(date_obj)
-    if obj_date_string == date_string(date.today()):
+    if obj_date_string == date_string(convert_timezone(demo_date)):
         friendly_string = 'Today'
-    elif obj_date_string == date_string(date.today() - timedelta(hours= 24)):
+    elif obj_date_string == date_string(convert_timezone(demo_date - timedelta(hours= 24))):
         friendly_string = 'Yesterday'
     else:
         friendly_string = obj_date_string

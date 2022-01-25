@@ -10,7 +10,8 @@ from bokeh.models.tools import HoverTool
 from bokeh.plotting import ColumnDataSource, figure
 from bokeh.transform import jitter
 
-from scripts.datahelpers import convert_timezone_np
+from scripts import demo_date
+from scripts.datahelpers import convert_timezone_np, convert_timezone
 
 
 def live_prediction_graph(data_source):
@@ -106,11 +107,11 @@ def bedtime_graph(sourceDF, fillsourceDF):
         toolbar_location= None,
         toolbar_sticky= False,
         x_axis_location="above",
-        x_range=Range1d(start=datetime.now() - timedelta(hours=24),
-            end= datetime.now(),
+        x_range=Range1d(start= convert_timezone(demo_date - timedelta(hours=24)),
+            end= convert_timezone(demo_date),
             bounds= (
-                datetime.now() - timedelta(days=7),
-                datetime.now()
+                convert_timezone(demo_date - timedelta(days=7)),
+                convert_timezone(demo_date)
             )
         ),
         y_range=Range1d(start=-.07, end=1.07, bounds=(-.07,1.07)),

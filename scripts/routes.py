@@ -204,7 +204,7 @@ def readings():
     """Route for browsing raw database readings"""
 
     #Get list of photos/data to display on page
-    readings = datahelpers.get_readings(date_based= False)
+    readings = datahelpers.get_readings()
     readings_requested_page = request.args.get('page', 1, type=int)
     readings_page = datahelpers.paginate(readings, 12, readings_requested_page)
 

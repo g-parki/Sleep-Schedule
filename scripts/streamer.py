@@ -332,6 +332,7 @@ class Streamer:
         self.inqueue = inqueue
         self.outqueue = outqueue
         self.event = event
+        self._retry_counter = 0
 
     def __iter__(self):
         """Serves stream as generator for either HTTP or blind consumption"""
@@ -350,6 +351,9 @@ class Streamer:
             else:
                 #Reopen capture object, then try again
                 self.cap = cv2.VideoCapture(self.stream_url)
+                self._retry_counter += 1
+                if self._retry_counter >= 2:
+                    break
                 continue
             self.frame = predictor(self.frame, self.model)
 
